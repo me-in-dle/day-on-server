@@ -1,6 +1,5 @@
 dependencies {
     val kotlinModuleVersion: String by rootProject
-    implementation(project(":day-on-api"))
     implementation(project(":day-on-core"))
     implementation(project(":day-on-provider"))
     implementation(project(":day-on-application"))
