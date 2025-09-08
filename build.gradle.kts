@@ -101,7 +101,7 @@ subprojects {
         }
     }
 
-    if (name.contains("persistence") || name.contains("application")) {
+    if (name.contains("persistence") || name.contains("application") || name.contains("api")) {
         apply(plugin = "kotlin-kapt")
 
         val kaptVersion: String by rootProject
