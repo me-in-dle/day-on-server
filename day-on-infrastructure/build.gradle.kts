@@ -1,8 +1,10 @@
 dependencies {
+    val gsonVersion: String by project
+
     implementation(project(":day-on-core"))
 
     implementation("org.springframework:spring-messaging")
-    // redis (분산 세션 및 pub + sub)
+    implementation("com.google.code.gson:gson:$gsonVersion")
     implementation("org.springframework.boot:spring-boot-starter-data-redis")
 
 }
