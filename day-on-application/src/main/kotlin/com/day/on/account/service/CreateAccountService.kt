@@ -3,17 +3,16 @@ package com.day.on.account.service
 import com.day.on.account.model.Account
 import com.day.on.account.model.ConnectAccount
 import com.day.on.account.type.ConnectType
-import com.day.on.account.type.System
-import com.day.on.account.type.System.SYSTEM_ID
 import com.day.on.account.usecase.inbound.CreateAccountUseCase
 import com.day.on.account.usecase.outbound.AccountCommandPort
 import com.day.on.account.usecase.outbound.AccountQueryPort
 import com.day.on.account.usecase.outbound.ConnectAccountCommandPort
 import com.day.on.account.usecase.outbound.ConnectAccountQueryPort
 import com.day.on.account.usecase.outbound.ConnectSocialAccountPort
-import java.time.LocalDateTime
+import org.springframework.stereotype.Service
 import java.util.UUID
 
+@Service
 class CreateAccountService(
     private val accountQueryPort: AccountQueryPort,
     private val accountCommandPort: AccountCommandPort,
@@ -24,7 +23,7 @@ class CreateAccountService(
 
     override fun createAccount(accountId: Long?, code: String, connectType: ConnectType): Account {
         val socialAccount = connectSocialAccountPort.connect(code, connectType)
-        require(!connectAccountQueryPort.findByEmail(socialAccount.email, connectType)) { "이미 가입된 이메일입니다." }
+        require(!connectAccountQueryPort.existByEmail(socialAccount.email, connectType)) { "이미 가입된 이메일입니다." }
 
         accountId?.let {
             connectAccountCommandPort.save(
