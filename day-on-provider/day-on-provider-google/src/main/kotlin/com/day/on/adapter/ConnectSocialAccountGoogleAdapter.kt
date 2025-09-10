@@ -38,10 +38,6 @@ class ConnectSocialAccountGoogleAdapter(
         accountId = 0L,
         connectType = ConnectType.GOOGLE,
         isEmailVerified = emailVerified,
-        createdId = SYSTEM_ID.id,
-        createdAt = LocalDateTime.now(),
-        updatedId = SYSTEM_ID.id,
-        updatedAt = LocalDateTime.now(),
     )
 
     data class GoogleValidatedTokenResponse(

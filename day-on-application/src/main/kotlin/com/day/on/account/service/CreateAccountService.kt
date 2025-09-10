@@ -33,11 +33,7 @@ class CreateAccountService(
                     email = socialAccount.email,
                     accountId = it,
                     connectType = connectType,
-                    isEmailVerified = true,
-                    createdId = SYSTEM_ID.id,
-                    createdAt = LocalDateTime.now(),
-                    updatedId = SYSTEM_ID.id,
-                    updatedAt = LocalDateTime.now(),
+                    isEmailVerified = socialAccount.isEmailVerified,
                 )
             )
 
@@ -47,10 +43,6 @@ class CreateAccountService(
                 Account(
                     id = 0L,
                     nickName = UUID.randomUUID().toString(),
-                    createdId = SYSTEM_ID.id,
-                    createdAt = LocalDateTime.now(),
-                    updatedId = SYSTEM_ID.id,
-                    updatedAt = LocalDateTime.now(),
                 )
             )
 
@@ -60,11 +52,7 @@ class CreateAccountService(
                     email = socialAccount.email,
                     accountId = account.id,
                     connectType = connectType,
-                    isEmailVerified = true,
-                    createdId = SYSTEM_ID.id,
-                    createdAt = LocalDateTime.now(),
-                    updatedId = SYSTEM_ID.id,
-                    updatedAt = LocalDateTime.now(),
+                    isEmailVerified = socialAccount.isEmailVerified,
                 )
             )
 
