@@ -1,0 +1,59 @@
+name: 🐛 Bug Fix
+description: 버그 수정
+labels: [bug, fix]
+body:
+  - type: textarea
+    attributes:
+      label: 🔍 버그 설명
+      description: 어떤 버그인지 자세히 설명해주세요.
+      placeholder: 발생하는 문제와 예상되는 동작을 설명해주세요.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: 📋 재현 단계
+      description: 버그를 재현할 수 있는 단계를 작성해주세요.
+      placeholder: |
+        1. 첫 번째 단계
+        2. 두 번째 단계
+        3. 버그 발생
+    validations:
+      required: true
+
+  - type: dropdown
+    attributes:
+      label: 🚨 우선순위
+      description: 버그의 심각도를 선택해주세요.
+      options:
+        - 🔴 Critical (서비스 중단)
+        - 🟠 High (주요 기능 영향)
+        - 🟡 Medium (일부 기능 영향)
+        - 🟢 Low (사소한 문제)
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: 🖥️ 환경 정보
+      description: 버그가 발생한 환경을 작성해주세요.
+      placeholder: |
+        - OS: 
+        - 브라우저: 
+        - 버전: 
+        - 기타:
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: ✅ 수정 계획
+      description: 버그 수정을 위한 작업 계획
+      placeholder: |
+        - [ ] 원인 분석
+        - [ ] 수정 방안 설계
+        - [ ] 코드 수정
+        - [ ] 테스트 작성
+        - [ ] 검증
+    validations:
+      required: true
