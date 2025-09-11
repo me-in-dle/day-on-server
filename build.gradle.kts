@@ -72,6 +72,12 @@ subprojects {
         testImplementation("io.kotest:kotest-extensions-spring:$kotestSpringVersion")
     }
 
+    dependencies {
+        val jacksonModuleKotlinVersion: String by rootProject
+        implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$jacksonModuleKotlinVersion")
+    }
+
+
     tasks.withType<org.springframework.boot.gradle.tasks.bundling.BootJar> {
         enabled = false
     }
