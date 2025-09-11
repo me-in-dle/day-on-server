@@ -1,43 +1,32 @@
 package com.day.on.messaging
 
-import com.day.on.messaging.RedisMessageSubscriber.WebSocketTopics.SERVER
-import com.day.on.messaging.RedisMessageSubscriber.WebSocketTopics.SYSTEM_BROADCAST
-import com.day.on.messaging.RedisMessageSubscriber.WebSocketTopics.TOPIC
-import com.day.on.messaging.RedisMessageSubscriber.WebSocketTopics.USER_NOTIFICATION
+import com.day.on.websocket.usecase.inbound.MessageSubscribeUseCase
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.data.redis.connection.Message
 import org.springframework.data.redis.connection.MessageListener
-import org.springframework.messaging.simp.SimpMessagingTemplate
-import org.springframework.stereotype.Service
+import org.springframework.stereotype.Component
 
-@Service
+@Component
 class RedisMessageSubscriber(
-    private val template: SimpMessagingTemplate
+    private val useCase : MessageSubscribeUseCase
 ) : MessageListener {
 
-    data class PersonalMessage(
-        val targetUserId: String,
-        val body: String
-    )
+    private val om = jacksonObjectMapper()
 
-    private val objectMapper = jacksonObjectMapper()
+    data class PersonalMessage(val targetUserId: String, val body: String)
 
-    object WebSocketTopics {
-        const val SYSTEM_BROADCAST = "/topic/system.broadcast"
-        const val USER_NOTIFICATION = "/queue/notification"
-        const val TOPIC = "topic:"
-        const val SERVER = "server:"
-    }
     override fun onMessage(message: Message, pattern: ByteArray?) {
         val payload = String(message.body)
         val channel = pattern?.toString(Charsets.UTF_8) ?: return
 
-        if (channel.startsWith(TOPIC)) template.convertAndSend(SYSTEM_BROADCAST, payload)
-        else if (channel.startsWith(SERVER)) {
-            // 개인 서버 채널로 구독 (메세지 안에 targerUserId 포함해야함)
-            val msg = objectMapper.readValue(payload, PersonalMessage::class.java)
-            template.convertAndSendToUser(msg.targetUserId, USER_NOTIFICATION,msg.body)
-
+        when {
+            channel.startsWith("topic:") -> useCase.onBroadcastReceived(payload)
+            channel.startsWith("server:") -> {
+                val msg = om.readValue<PersonalMessage>(payload)
+                useCase.onPersonalMessageReceived(msg.targetUserId, msg.body)
+            }
         }
-        template.convertAndSend(channel, payload)
     }
+
 }

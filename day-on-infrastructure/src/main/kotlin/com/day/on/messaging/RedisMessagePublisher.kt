@@ -12,4 +12,8 @@ class RedisMessagePublisher(
     override fun publishBroadcast(payload: String) {
         redis.convertAndSend("topic:system.broadcast", payload)
     }
+
+    override fun publishToServer(serverId: String, payload: String) {
+        redis.convertAndSend("server:$serverId", payload)
+    }
 }

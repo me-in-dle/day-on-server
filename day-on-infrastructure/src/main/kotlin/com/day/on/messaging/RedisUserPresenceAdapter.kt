@@ -1,39 +1,37 @@
 package com.day.on.messaging
 
-import com.day.on.websocket.model.UserSubscription
-import com.day.on.websocket.usecase.outbound.SubscriptionPort
+import com.day.on.websocket.usecase.outbound.UserPresencePort
 import org.springframework.data.redis.core.StringRedisTemplate
 import org.springframework.stereotype.Component
 
 @Component
-class RedisSubscriptionAdapter(
+class RedisUserPresenceAdapter(
     private val redis: StringRedisTemplate
-) : SubscriptionPort {
+) : UserPresencePort {
 
-    companion object {
-        const val TOPIC_PREFIX = "topic:"
-        const val USER_PREFIX = "user:"
+    override fun bind(userId: String, serverId: String, sessionId: String) {
+        redis.opsForSet().add("user:$userId:sessions", sessionId)
+        redis.opsForValue().set("session:$sessionId:server", serverId)
+        redis.opsForSet().add("server:$serverId:users", userId)
     }
 
-    override fun addSubscription(subscription: UserSubscription) {
-        redis.opsForSet().add("$TOPIC_PREFIX${subscription.topic}", subscription.userId)
-        redis.opsForSet().add("$USER_PREFIX${subscription.userId}:topics", subscription.topic)
-    }
+    override fun unbind(userId: String, sessionId: String) {
+        val serverId = redis.opsForValue().get("session:$sessionId:server") ?: return
+        redis.opsForSet().remove("user:$userId:sessions", sessionId)
+        redis.delete("session:$sessionId:server")
 
-    override fun removeSubscription(subscription: UserSubscription) {
-        redis.opsForSet().remove("$TOPIC_PREFIX${subscription.topic}", subscription.userId)
-        redis.opsForSet().remove("$USER_PREFIX${subscription.userId}:topics", subscription.topic)
-    }
-
-    override fun removeAllUserSubscriptions(userId: String) {
-        val userKey = "$USER_PREFIX$userId:topics"
-        val topics = redis.opsForSet().members(userKey) ?: return
-        topics.forEach { topic ->
-            redis.opsForSet().remove("$TOPIC_PREFIX$topic", userId)
+        // 세션이 더 없으면 user-server 매핑 제거
+        val remaining = redis.opsForSet().size("user:$userId:sessions") ?: 0
+        if (remaining == 0L) {
+            redis.delete("user:$userId:sessions")
+            redis.opsForSet().remove("server:$serverId:users", userId)
         }
-        redis.delete(userKey)
     }
 
-    override fun getTopicSubscribers(topic: String): Set<String> =
-        redis.opsForSet().members("$TOPIC_PREFIX$topic")?.toSet() ?: emptySet()
+    override fun findServerIdBy(userId: String): String? {
+        val sessions = redis.opsForSet().members("user:$userId:sessions") ?: return null
+        val firstSession = sessions.firstOrNull() ?: return null
+        return redis.opsForValue().get("session:$firstSession:server")
+    }
 }
+
