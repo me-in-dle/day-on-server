@@ -4,6 +4,8 @@ spring:
       - "application-jwt.yml"
       - "application-infra.yml"
       - "application-persistence.yml"
+app:
+  server-id: server-a
 
 server:
   error:
