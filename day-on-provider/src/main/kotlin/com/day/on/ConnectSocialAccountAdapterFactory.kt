@@ -1,8 +1,9 @@
-package com.day.on.adapter
+package com.day.on
 
 import com.day.on.account.model.ConnectAccount
 import com.day.on.account.type.ConnectType
 import com.day.on.account.usecase.outbound.ConnectSocialAccountPort
+import com.day.on.adapter.ConnectSocialAccountGoogleAdapter
 import org.springframework.beans.factory.annotation.Qualifier
 import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Component

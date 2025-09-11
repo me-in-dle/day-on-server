@@ -3,17 +3,20 @@ package com.day.on.account.service
 import com.day.on.account.model.Account
 import com.day.on.account.model.ConnectAccount
 import com.day.on.account.type.ConnectType
-import com.day.on.account.type.System
-import com.day.on.account.type.System.SYSTEM_ID
 import com.day.on.account.usecase.inbound.CreateAccountUseCase
 import com.day.on.account.usecase.outbound.AccountCommandPort
 import com.day.on.account.usecase.outbound.AccountQueryPort
 import com.day.on.account.usecase.outbound.ConnectAccountCommandPort
 import com.day.on.account.usecase.outbound.ConnectAccountQueryPort
 import com.day.on.account.usecase.outbound.ConnectSocialAccountPort
-import java.time.LocalDateTime
+import com.day.on.common.lock.DistributedLockBeforeTransactionAnnotation
+import com.day.on.common.lock.DistributedLockPrefix
+import org.springframework.stereotype.Service
+import org.springframework.transaction.annotation.Transactional
 import java.util.UUID
 
+@Service
+@Transactional
 class CreateAccountService(
     private val accountQueryPort: AccountQueryPort,
     private val accountCommandPort: AccountCommandPort,
@@ -22,9 +25,14 @@ class CreateAccountService(
     private val connectAccountCommandPort: ConnectAccountCommandPort,
 ) : CreateAccountUseCase {
 
+    @DistributedLockBeforeTransactionAnnotation(
+        key = ["#connectType.name", "#code"],
+        prefix = DistributedLockPrefix.MEMBER_REGISTER,
+        separator = ":"
+    )
     override fun createAccount(accountId: Long?, code: String, connectType: ConnectType): Account {
         val socialAccount = connectSocialAccountPort.connect(code, connectType)
-        require(!connectAccountQueryPort.findByEmail(socialAccount.email, connectType)) { "이미 가입된 이메일입니다." }
+        require(!connectAccountQueryPort.existByEmail(socialAccount.email, connectType)) { "이미 가입된 이메일입니다." }
 
         accountId?.let {
             connectAccountCommandPort.save(

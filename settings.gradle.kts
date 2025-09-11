@@ -24,6 +24,7 @@ pluginManagement {
 include("day-on-api")
 include("day-on-core")
 include("day-on-provider")
+include("day-on-provider:day-on-provider-jwt")
 include("day-on-provider:day-on-provider-google")
 include("day-on-provider:day-on-provider-claude")
 include("day-on-persistence")
