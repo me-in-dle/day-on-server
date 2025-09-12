@@ -12,10 +12,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$kotlinModuleVersion")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
-
     implementation("org.springframework.boot:spring-boot-starter-websocket")
-
-    implementation("org.springframework.boot:spring-boot-starter-security")
 
     val openFeignVersion: String by rootProject
     implementation("org.springframework.cloud:spring-cloud-starter-openfeign:$openFeignVersion")

@@ -1,22 +1,32 @@
 package com.day.on.messaging
 
+import com.day.on.websocket.usecase.inbound.MessageSubscribeUseCase
+import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
+import com.fasterxml.jackson.module.kotlin.readValue
 import org.springframework.data.redis.connection.Message
 import org.springframework.data.redis.connection.MessageListener
-import org.springframework.messaging.simp.SimpMessagingTemplate
-import org.springframework.stereotype.Service
+import org.springframework.stereotype.Component
 
-@Service
+@Component
 class RedisMessageSubscriber(
-    private val template: SimpMessagingTemplate
+    private val useCase : MessageSubscribeUseCase
 ) : MessageListener {
-    // 서버끼리 동기화
-    object WebSocketTopics {
-        const val SYSTEM_BROADCAST = "/topic/system.broadcast"
-        const val USER_NOTIFICATION = "/topic/user.notification"
-    }
+
+    private val om = jacksonObjectMapper()
+
+    data class PersonalMessage(val userId: String, val body: String)
+
     override fun onMessage(message: Message, pattern: ByteArray?) {
         val payload = String(message.body)
-        val channel = pattern?.toString(Charsets.UTF_8) ?: WebSocketTopics.SYSTEM_BROADCAST
-        template.convertAndSend(channel, payload)
+        val channel = pattern?.toString(Charsets.UTF_8) ?: return
+
+        when (channel) {
+            "topic:system.broadcast" -> useCase.onBroadcastReceived(payload)
+            "topic:user-messages" -> {
+                val msg = om.readValue<PersonalMessage>(payload)
+                useCase.onPersonalMessageReceived(msg.userId, msg.body)
+            }
+        }
     }
+
 }
