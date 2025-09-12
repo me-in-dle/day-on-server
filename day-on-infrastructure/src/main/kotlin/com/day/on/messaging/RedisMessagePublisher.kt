@@ -13,7 +13,9 @@ class RedisMessagePublisher(
         redis.convertAndSend("topic:system.broadcast", payload)
     }
 
-    override fun publishToServer(serverId: String, payload: String) {
-        redis.convertAndSend("server:$serverId", payload)
+    override fun publishToUser(userId: String, body: String) {
+        val json = """{"userId":"$userId","body":"$body"}"""
+        redis.convertAndSend("topic:user-messages", json)
     }
+
 }

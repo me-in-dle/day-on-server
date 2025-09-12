@@ -7,5 +7,5 @@ interface WebSocketUseCase {
     fun handleConnection(userId: String, sessionId : String)
     fun handleDisconnection(userId: String, sessionId : String)
     fun broadcast(payload : String) // 알림시점 호출
-    fun sendToUser(userId: String, body: String)
+    fun publishToUser(userId: String, body : String)
 }
