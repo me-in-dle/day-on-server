@@ -3,7 +3,8 @@ package com.day.on.websocket.principal
 import java.security.Principal
 
 data class StompPrincipal(
-    val userId: String
+    val accountId: String,
 ) : Principal {
-    override fun getName(): String = userId
+    val attributes: Map<String, Any> = emptyMap()
+    override fun getName(): String = accountId
 }
