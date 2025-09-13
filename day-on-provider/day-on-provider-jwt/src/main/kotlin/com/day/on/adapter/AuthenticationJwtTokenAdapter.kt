@@ -24,13 +24,13 @@ class AuthenticationJwtTokenAdapter(
                 cachePort.put(
                     key = "$ACCESS_TOKEN_PREFIX:$accountId",
                     value = refreshToken,
-                    ttlSeconds = REFRESH_TOKEN_TTL,
+                    ttlMillis = REFRESH_TOKEN_TTL,
                 )
 
                 cachePort.put(
                     key = "$REFRESH_TOKEN_PREFIX:$accountId",
                     value = refreshToken,
-                    ttlSeconds = REFRESH_TOKEN_TTL,
+                    ttlMillis = REFRESH_TOKEN_TTL,
                 )
                 return AuthenticationToken(
                     accessToken = accessToken,
@@ -48,7 +48,7 @@ class AuthenticationJwtTokenAdapter(
             cachePort.put(
                 key = "$ACCESS_TOKEN_PREFIX:$accountId",
                 value = accessToken,
-                ttlSeconds = ACCESS_TOKEN_TTL,
+                ttlMillis = ACCESS_TOKEN_TTL,
             )
             return AuthenticationToken(
                 accessToken = accessToken,
@@ -65,7 +65,7 @@ class AuthenticationJwtTokenAdapter(
             cachePort.put(
                 key = "$REFRESH_TOKEN_PREFIX:$accountId",
                 value = refreshToken,
-                ttlSeconds = REFRESH_TOKEN_TTL,
+                ttlMillis = REFRESH_TOKEN_TTL,
             )
             return AuthenticationToken(
                 accessToken = "",
