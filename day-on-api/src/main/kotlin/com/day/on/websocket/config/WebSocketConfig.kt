@@ -17,10 +17,9 @@ class WebSocketConfig : WebSocketMessageBrokerConfigurer {
     }
 
     override fun registerStompEndpoints(registry: StompEndpointRegistry) {
-        registry.addEndpoint("/ws")
+        registry.addEndpoint("/ws", "/ws-connect")
             .setAllowedOriginPatterns("*")
             .addInterceptors(WebSocketHandshakeInterceptor())
-            .withSockJS()
     }
 
 }
