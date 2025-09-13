@@ -14,7 +14,6 @@ dependencies {
     val jacksonModuleKotlinVersion: String by rootProject
 
     implementation(project(":day-on-core"))
-    implementation(project(":day-on-infrastructure"))
 
     implementation("com.squareup.retrofit2:retrofit:$retrofit2Version")
     implementation("com.squareup.retrofit2:converter-gson:$retrofit2Version")

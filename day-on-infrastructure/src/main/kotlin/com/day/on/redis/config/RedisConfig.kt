@@ -2,15 +2,21 @@ package com.day.on.redis.config
 
 import com.day.on.messaging.RedisMessageSubscriber
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.cache.CacheManager
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
+import org.springframework.data.redis.cache.RedisCacheConfiguration
+import org.springframework.data.redis.cache.RedisCacheManager
 import org.springframework.data.redis.connection.RedisConnectionFactory
 import org.springframework.data.redis.connection.lettuce.LettuceConnectionFactory
 import org.springframework.data.redis.core.RedisTemplate
 import org.springframework.data.redis.listener.ChannelTopic
 import org.springframework.data.redis.listener.PatternTopic
 import org.springframework.data.redis.listener.RedisMessageListenerContainer
+import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer
+import org.springframework.data.redis.serializer.RedisSerializationContext
 import org.springframework.data.redis.serializer.StringRedisSerializer
+import java.time.Duration
 
 @Configuration
 class RedisConfig {
@@ -26,17 +32,36 @@ class RedisConfig {
     }
 
     @Bean
-    fun applyRedisTemplate(connectionFactory: RedisConnectionFactory): RedisTemplate<String, Any> {
-        val redisTemplate = RedisTemplate<String, Any>()
-        redisTemplate.connectionFactory = connectionFactory
-        redisTemplate.setEnableTransactionSupport(true)
+    fun redisTemplate(): RedisTemplate<*, *> {
+        return RedisTemplate<Any, Any>().apply {
+            this.connectionFactory = applyRedisConnectionFactory()
+            this.keySerializer = StringRedisSerializer()
+            this.hashKeySerializer = StringRedisSerializer()
+            this.valueSerializer = StringRedisSerializer()
+        }
+    }
 
-        redisTemplate.keySerializer = StringRedisSerializer()
-        redisTemplate.valueSerializer = StringRedisSerializer()
-        redisTemplate.hashKeySerializer = StringRedisSerializer()
-        redisTemplate.hashValueSerializer = StringRedisSerializer()
+    @Bean
+    fun cacheManager(): CacheManager {
+        val defaultCacheConfiguration =
+            RedisCacheConfiguration.defaultCacheConfig()
+                .serializeKeysWith(
+                    RedisSerializationContext.SerializationPair.fromSerializer(StringRedisSerializer()),
+                )
+                .serializeValuesWith(
+                    RedisSerializationContext.SerializationPair.fromSerializer(GenericJackson2JsonRedisSerializer()),
+                )
 
-        return redisTemplate
+        val cacheConfigurations =
+            mapOf(
+                "member" to defaultCacheConfiguration.entryTtl(Duration.ofMillis(1000 * 60 * 5)),
+            )
+
+        return RedisCacheManager.RedisCacheManagerBuilder
+            .fromConnectionFactory(applyRedisConnectionFactory())
+            .withInitialCacheConfigurations(cacheConfigurations)
+            .cacheDefaults(defaultCacheConfiguration)
+            .build()
     }
 
     /*
@@ -46,7 +71,7 @@ class RedisConfig {
     fun redisMessageListener(
         connectionFactory: RedisConnectionFactory,
         subscriber: RedisMessageSubscriber
-    ) : RedisMessageListenerContainer {
+    ): RedisMessageListenerContainer {
         val container = RedisMessageListenerContainer()
         container.setConnectionFactory(connectionFactory)
 

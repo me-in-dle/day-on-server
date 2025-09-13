@@ -29,7 +29,7 @@ services:
       - redis_data:/data
     networks:
       - dayon_network
-    command: redis-server --appendonly yes --requirepass redis_password
+    command: redis-server --appendonly yes
 
 volumes:
   mysql_data:

@@ -1,6 +1,5 @@
 package com.day.on.websocket.endpoint
 
-import com.day.on.account.endpoint.CreateAccountController
 import com.day.on.common.outbound.CachePort
 import jakarta.servlet.http.HttpServletResponse
 import org.springframework.http.HttpHeaders
@@ -9,7 +8,6 @@ import org.springframework.http.ResponseEntity
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestHeader
 import org.springframework.web.bind.annotation.RestController
-import java.net.http.HttpResponse
 import java.util.UUID
 
 @RestController
@@ -26,7 +24,7 @@ class WsTicketController(
         cachePort.putIfAbsent(
             key = "ws:ticket:$ticketToken",
             value = accountId.toString(),
-            ttlSeconds = 1000L * 60L * 5L,
+            ttlMillis = 1000L * 60L * 5L,
         )
 
         val cookie = ResponseCookie.from("WS-TICKET", ticketToken.toString())

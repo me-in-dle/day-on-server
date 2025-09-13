@@ -11,7 +11,6 @@ dependencies {
     val openFeignVersion: String by rootProject
 
     implementation(project(":day-on-core"))
-    implementation(project(":day-on-infrastructure"))
 
     implementation("org.springframework.cloud:spring-cloud-starter-openfeign:$openFeignVersion")
 }
