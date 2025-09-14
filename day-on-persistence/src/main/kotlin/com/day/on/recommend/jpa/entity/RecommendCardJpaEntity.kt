@@ -1,6 +1,7 @@
 package com.day.on.recommend.jpa.entity
 
 import com.day.on.account.type.System
+import com.day.on.place.type.PlaceType
 import com.day.on.recommend.jpa.entity.embedded.RecommendPlaceEmbeddedJpaModel
 import com.day.on.recommend.model.RecommendCard
 import com.day.on.recommend.type.RecommendCardStatus
@@ -42,11 +43,15 @@ class RecommendCardJpaEntity(
     @Column(name = "contents", columnDefinition = "TEXT", nullable = true)
     val contents: String,
 
-    @Column(name = "start_time_slot", nullable = false)
-    val startTimeSlot: LocalDateTime,
+    @Column(name = "start_time_slot", nullable = true)
+    val startTimeSlot: LocalDateTime?,
 
-    @Column(name = "end_time_slot", nullable = false)
-    val endTimeSlot: LocalDateTime,
+    @Column(name = "end_time_slot", nullable = true)
+    val endTimeSlot: LocalDateTime?,
+
+    @Enumerated(value = EnumType.STRING)
+    @Column(name = "place_l_type", columnDefinition = "VARCHAR(255)", nullable = true)
+    val placeLType: PlaceType,
 
     @Embedded
     val recommendPlace: RecommendPlaceEmbeddedJpaModel?,
@@ -76,6 +81,7 @@ class RecommendCardJpaEntity(
         accountId = accountId,
         dailyId = dailyId,
         contents = contents,
+        placeLType = placeLType,
         startTimeSlot = startTimeSlot,
         endTimeSlot = endTimeSlot,
         recommendPlace = recommendPlace?.toDomainModel(),
@@ -93,6 +99,7 @@ class RecommendCardJpaEntity(
                 accountId = accountId,
                 dailyId = dailyId,
                 contents = contents,
+                placeLType = placeLType,
                 startTimeSlot = startTimeSlot,
                 endTimeSlot = endTimeSlot,
                 recommendPlace = recommendPlace?.let { RecommendPlaceEmbeddedJpaModel.from(it) },

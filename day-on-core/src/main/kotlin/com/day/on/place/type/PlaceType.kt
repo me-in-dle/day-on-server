@@ -46,4 +46,11 @@ enum class PlaceType {
     // 기타 경험형
     WORKSHOP,            // 공방/원데이클래스
     EXHIBITION,          // 전시회
+    ;
+
+    companion object {
+        fun randomTypes(count: Int): List<PlaceType> {
+            return entries.shuffled().take(count)
+        }
+    }
 }

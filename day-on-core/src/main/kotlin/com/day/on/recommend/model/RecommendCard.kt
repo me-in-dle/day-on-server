@@ -1,16 +1,18 @@
 package com.day.on.recommend.model
 
 import com.day.on.account.type.System
+import com.day.on.place.type.PlaceType
 import com.day.on.recommend.type.RecommendCardStatus
 import java.time.LocalDateTime
 
 data class RecommendCard(
-    val id: Long,
+    val id: Long = 0L,
     val accountId: Long,
     val dailyId: Long,
     val contents: String,
-    val startTimeSlot: LocalDateTime,
-    val endTimeSlot: LocalDateTime,
+    val placeLType: PlaceType,
+    val startTimeSlot: LocalDateTime?,
+    val endTimeSlot: LocalDateTime?,
     val recommendPlace: RecommendPlace?,
     val status: RecommendCardStatus,
     val createdId: String = System.SYSTEM_ID.id,
