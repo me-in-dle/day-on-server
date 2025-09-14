@@ -15,6 +15,10 @@ class StompMessageDispatcher(
 
     // TODO : 개인화 하기 ^^
     override fun dispatchPersonal(userId: String, body: String) {
-        template.convertAndSend( "/queue/$userId/notification", body)
+        template.convertAndSendToUser(
+                userId,
+                "/queue/notification",
+                body
+        )
     }
 }
