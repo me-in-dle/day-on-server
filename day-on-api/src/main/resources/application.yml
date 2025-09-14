@@ -35,4 +35,4 @@ logging:
 
 client:
   redirect:
-    url: "http://localhost:5173"
+    url: "http://localhost:5173/auth/callback"
