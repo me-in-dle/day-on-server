@@ -1,5 +1,6 @@
 package com.day.on.client
 
+import com.google.gson.GsonBuilder
 import okhttp3.OkHttpClient
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -20,7 +21,13 @@ class ApiClientConfig {
                     .readTimeout(30, TimeUnit.SECONDS)
                     .build(),
             )
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(
+                GsonConverterFactory.create(
+                    GsonBuilder()
+                        .setLenient()
+                        .create()
+                )
+            )
             .build()
             .create(GoogleAccountClient::class.java)
     }

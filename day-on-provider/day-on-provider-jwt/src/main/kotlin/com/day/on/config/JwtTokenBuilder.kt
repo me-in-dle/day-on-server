@@ -30,7 +30,7 @@ class JwtTokenBuilder : InitializingBean {
             .setSubject(subject)
             .setIssuedAt(Date())
             .setExpiration(Date(System.currentTimeMillis() + tokenTime))
-            .signWith(key, SignatureAlgorithm.HS512)
+            .signWith(key, SignatureAlgorithm.HS256)
             .compact()
     }
 }
