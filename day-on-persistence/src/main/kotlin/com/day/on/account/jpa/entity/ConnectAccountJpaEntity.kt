@@ -30,24 +30,32 @@ class ConnectAccountJpaEntity(
     @Id
     @GeneratedValue(strategy = IDENTITY)
     val id: Long,
+
     @Column(name = "email", nullable = false, columnDefinition = "VARCHAR(100)")
     val email: String,
+
     @Column(name = "account_id", nullable = false, columnDefinition = "BIGINT")
     val accountId: Long,
+
     @Enumerated(value = STRING)
     @Column(name = "connect_type", nullable = false, columnDefinition = "VARCHAR(20)")
     val connectType: ConnectType,
+
     @Column(name = "is_email_verified", nullable = false, columnDefinition = "BOOLEAN DEFAULT FALSE")
     val isEmailVerified: Boolean,
+
     @CreatedBy
     @Column(name = "created_id", nullable = false, columnDefinition = "VARCHAR(30)")
     val createdId: String = System.SYSTEM_ID.id,
+
     @CreatedDate
     @Column(name = "created_at", nullable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
+
     @LastModifiedBy
     @Column(name = "updated_id", nullable = false, columnDefinition = "VARCHAR(30)")
     val updatedId: String = System.SYSTEM_ID.id,
+
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     val updatedAt: LocalDateTime = LocalDateTime.now(),
