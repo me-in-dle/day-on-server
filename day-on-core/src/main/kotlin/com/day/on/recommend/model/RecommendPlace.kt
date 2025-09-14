@@ -1,11 +1,11 @@
 package com.day.on.recommend.model
 
-import com.day.on.recommend.type.RecommendPlaceType
+import com.day.on.place.type.PlaceType
 
 data class RecommendPlace(
     val placeId: Long,
     val placeName: String,
-    val placeLType: RecommendPlaceType,
+    val placeLType: PlaceType,
     val placeSType : String,
     val placeSTypeKoreanName: String,
 )

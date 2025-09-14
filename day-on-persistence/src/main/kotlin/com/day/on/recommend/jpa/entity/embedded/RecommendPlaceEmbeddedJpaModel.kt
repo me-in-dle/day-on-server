@@ -1,7 +1,7 @@
 package com.day.on.recommend.jpa.entity.embedded
 
 import com.day.on.recommend.model.RecommendPlace
-import com.day.on.recommend.type.RecommendPlaceType
+import com.day.on.place.type.PlaceType
 import jakarta.persistence.Column
 import jakarta.persistence.Embeddable
 import jakarta.persistence.EnumType
@@ -15,7 +15,7 @@ class RecommendPlaceEmbeddedJpaModel(
     val placeName: String,
     @Enumerated(value = EnumType.STRING)
     @Column(name = "place_l_type", columnDefinition = "VARCHAR(255)", nullable = true)
-    val placeLType: RecommendPlaceType,
+    val placeLType: PlaceType,
     @Column(name = "place_s_type", columnDefinition = "VARCHAR(255)", nullable = true)
     val placeSType: String,
     @Column(name = "place_s_type_korean_name", columnDefinition = "VARCHAR(255)", nullable = true)

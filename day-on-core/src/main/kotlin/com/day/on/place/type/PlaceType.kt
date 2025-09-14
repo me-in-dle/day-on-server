@@ -1,6 +1,6 @@
-package com.day.on.recommend.type
+package com.day.on.place.type
 
-enum class RecommendPlaceType {
+enum class PlaceType {
     // 음식/맛집
     RESTAURANT,          // 일반 맛집
     CAFE,                // 카페
