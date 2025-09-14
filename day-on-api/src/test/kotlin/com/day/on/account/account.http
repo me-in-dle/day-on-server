@@ -1,0 +1,5 @@
+### 1. GET social accounts login/register
+
+GET {{baseUrl}}/api/v1/account/social/google?code=test
+Content-Type: application/json
+Accept: */*

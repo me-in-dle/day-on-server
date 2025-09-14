@@ -4,6 +4,7 @@ spring:
       - "application-jwt.yml"
       - "application-infra.yml"
       - "application-persistence.yml"
+      - "application-google.yml"
 
 server:
   error:

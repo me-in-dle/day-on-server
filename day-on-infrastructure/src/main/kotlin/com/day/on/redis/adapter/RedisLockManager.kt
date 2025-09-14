@@ -13,7 +13,7 @@ class RedisLockManager(
 
         val lock = RedisLock(key)
 
-        if (lock.tryLock()) {
+        if (!lock.tryLock()) {
             throw IllegalStateException("Failed to acquire lock for key: $key")
         }
 
