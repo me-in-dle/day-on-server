@@ -7,6 +7,7 @@ import java.time.LocalDateTime
 data class ConnectAccount(
     val id: Long,
     val email: String,
+    val name: String,
     val accountId: Long,
     val connectType: ConnectType,
     val isEmailVerified: Boolean,
