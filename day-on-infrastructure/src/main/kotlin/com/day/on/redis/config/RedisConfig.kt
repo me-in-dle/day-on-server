@@ -76,7 +76,7 @@ class RedisConfig {
         container.setConnectionFactory(connectionFactory)
 
         container.addMessageListener(subscriber, ChannelTopic("topic:system.broadcast"))
-        container.addMessageListener(subscriber, PatternTopic("server:*"))
+        container.addMessageListener(subscriber, ChannelTopic("topic:user-messages"))
 
         return container
 

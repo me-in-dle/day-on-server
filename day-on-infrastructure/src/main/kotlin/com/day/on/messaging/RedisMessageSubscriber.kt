@@ -18,7 +18,7 @@ class RedisMessageSubscriber(
 
     override fun onMessage(message: Message, pattern: ByteArray?) {
         val payload = String(message.body)
-        val channel = pattern?.toString(Charsets.UTF_8) ?: return
+        val channel = message.channel.toString(Charsets.UTF_8)
 
         when (channel) {
             "topic:system.broadcast" -> useCase.onBroadcastReceived(payload)
