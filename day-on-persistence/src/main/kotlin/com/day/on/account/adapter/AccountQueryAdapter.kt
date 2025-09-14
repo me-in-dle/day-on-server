@@ -15,4 +15,9 @@ class AccountQueryAdapter(
         return accountJpaEntityRepository.findAccountJpaEntitiesById(id)?.toDomainModel()
             ?: throw IllegalArgumentException("Account not found with id: $id")
     }
+
+    override fun findAll(): List<Account> {
+        return accountJpaEntityRepository.findAll()
+                .map { it.toDomainModel() }
+    }
 }
