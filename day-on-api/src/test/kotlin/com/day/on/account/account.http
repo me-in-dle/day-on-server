@@ -3,3 +3,10 @@
 GET {{baseUrl}}/api/v1/account/social/google?code=test
 Content-Type: application/json
 Accept: */*
+
+### 1. GET info
+
+GET {{baseUrl}}/api/v1/account/info
+Content-Type: application/json
+Accept: */*
+X-ACCOUNT-ID: 202509130000
