@@ -19,20 +19,26 @@ class AccountJpaEntity(
     @Id
     @GeneratedValue(strategy = IDENTITY)
     val id: Long,
+
     @Column(name = "nick_name", nullable = false, columnDefinition = "VARCHAR(50)")
     val nickName: String,
+
     @CreatedBy
     @Column(name = "created_id", nullable = false, columnDefinition = "VARCHAR(30)")
     val createdId: String,
+
     @CreatedDate
     @Column(name = "created_at", nullable = false)
     val createdAt: LocalDateTime,
+
     @LastModifiedBy
     @Column(name = "updated_id", nullable = false, columnDefinition = "VARCHAR(30)")
     val updatedId: String,
+
     @LastModifiedDate
     @Column(name = "updated_at", nullable = false)
     val updatedAt: LocalDateTime,
+
     @Column(name = "age", nullable = true, columnDefinition = "INT")
     val age: Int?,
 ) {
