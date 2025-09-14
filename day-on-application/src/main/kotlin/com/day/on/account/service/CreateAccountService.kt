@@ -35,7 +35,7 @@ class CreateAccountService(
         val account = accountCommandPort.save(
             Account(
                 id = 0L,
-                nickName = UUID.randomUUID().toString(),
+                nickName = connectAccount.name.ifBlank { "user-${UUID.randomUUID().toString().substring(5)}" },
             )
         )
 
@@ -43,6 +43,7 @@ class CreateAccountService(
             ConnectAccount(
                 id = 0L,
                 email = connectAccount.email,
+                name = connectAccount.name,
                 accountId = account.id,
                 connectType = connectAccount.connectType,
                 isEmailVerified = connectAccount.isEmailVerified,

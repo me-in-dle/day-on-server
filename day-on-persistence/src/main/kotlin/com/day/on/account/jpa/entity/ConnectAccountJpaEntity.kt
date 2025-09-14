@@ -37,6 +37,9 @@ class ConnectAccountJpaEntity(
     @Column(name = "account_id", nullable = false, columnDefinition = "BIGINT")
     val accountId: Long,
 
+    @Column(name = "name", nullable = true, columnDefinition = "VARCHAR(100)")
+    val name: String,
+
     @Enumerated(value = STRING)
     @Column(name = "connect_type", nullable = false, columnDefinition = "VARCHAR(20)")
     val connectType: ConnectType,
@@ -60,9 +63,10 @@ class ConnectAccountJpaEntity(
     @Column(name = "updated_at", nullable = false)
     val updatedAt: LocalDateTime = LocalDateTime.now(),
 ) {
-    fun toDomainModel() = com.day.on.account.model.ConnectAccount(
+    fun toDomainModel() = ConnectAccount(
         id = id,
         email = email,
+        name = name,
         accountId = accountId,
         connectType = connectType,
         isEmailVerified = isEmailVerified,
@@ -77,6 +81,7 @@ class ConnectAccountJpaEntity(
             ConnectAccountJpaEntity(
                 id = id,
                 email = email,
+                name = name,
                 accountId = accountId,
                 connectType = connectType,
                 isEmailVerified = isEmailVerified,

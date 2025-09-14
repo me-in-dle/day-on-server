@@ -52,6 +52,7 @@ class ConnectSocialAccountGoogleAdapter(
     private fun GoogleValidatedTokenResponse.toSnsAccount() = ConnectAccount(
         id = 0L,
         email = email,
+        name = name ?: "",
         accountId = 0L,
         connectType = ConnectType.GOOGLE,
         isEmailVerified = emailVerified,
