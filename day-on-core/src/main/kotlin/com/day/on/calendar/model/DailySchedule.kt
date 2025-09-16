@@ -6,7 +6,7 @@ import java.time.LocalDateTime
 data class DailySchedule(
     val id: Long,
     val accountId: Long,
-    val day: LocalDate,
-    val createdAt: LocalDateTime?,
-    val updatedAt: LocalDateTime?
+    val day: LocalDateTime = LocalDateTime.now(),
+    val createdAt: LocalDateTime = LocalDateTime.now(),
+    val updatedAt: LocalDateTime = LocalDateTime.now(),
 )
