@@ -17,8 +17,8 @@ data class ScheduleContentEntity(
         @Column(name = "daily_schedules_id", nullable = false)
         val dailySchedulesId: Long,
 
-        @Column(name = "user_id", nullable = false, length = 50)
-        val userId: String,
+        @Column(name = "account_id", nullable = false, columnDefinition = "BIGINT")
+        val accountId: Long,
 
         @Column(name = "relation_types", length = 100)
         val relationTypes: String?,
@@ -26,7 +26,7 @@ data class ScheduleContentEntity(
         @Column(name = "contents", columnDefinition = "TEXT")
         val contents: String?,
 
-        @Column(name = "use_yn", length = 1)
+        @Column(name = "use_yn", nullable = false, length = 1)
         val useYn: String = "Y",
 
         @Column(name = "tag_ids", columnDefinition = "JSON")
@@ -67,7 +67,7 @@ data class ScheduleContentEntity(
         @Column(name = "sort_order")
         val sortOrder: Int = 0,
 
-        @Column(name = "created_at")
+        @Column(name = "created_at", nullable = false,)
         val createdAt: LocalDateTime = LocalDateTime.now(),
 
         @Column(name = "updated_at", nullable = false)
@@ -77,7 +77,7 @@ data class ScheduleContentEntity(
         return ScheduleContent(
                 id = this.id,
                 dailySchedulesId = this.dailySchedulesId,
-                userId = this.userId,
+                accountId = this.accountId,
                 relationTypes = this.relationTypes,
                 contents = this.contents,
                 useYn = this.useYn,
@@ -103,7 +103,7 @@ data class ScheduleContentEntity(
             return ScheduleContentEntity(
                     id = domain.id,
                     dailySchedulesId = domain.dailySchedulesId,
-                    userId = domain.userId,
+                    accountId = domain.accountId,
                     relationTypes = domain.relationTypes,
                     contents = domain.contents,
                     useYn = domain.useYn,

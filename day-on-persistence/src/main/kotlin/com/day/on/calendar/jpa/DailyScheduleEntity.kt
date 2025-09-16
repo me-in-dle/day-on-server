@@ -2,7 +2,6 @@ package com.day.on.calendar.jpa
 
 import com.day.on.calendar.model.DailySchedule
 import jakarta.persistence.*
-import java.time.LocalDate
 import java.time.LocalDateTime
 
 
@@ -13,23 +12,23 @@ data class DailyScheduleEntity(
         @GeneratedValue(strategy = GenerationType.IDENTITY)
         val id: Long = 0L,
 
-        @Column(name = "account_id", nullable = false, length = 50)
+        @Column(name = "account_id", nullable = false, columnDefinition = "BIGINT")
         val accountId: Long,
 
-        @Column(name = "day")
-        val day: LocalDate?,
+        @Column(name = "day", nullable = false)
+        val day: LocalDateTime = LocalDateTime.now(),
 
-        @Column(name = "created_at")
-        val createdAt: LocalDateTime?,
+        @Column(name = "created_at", nullable = false)
+        val createdAt: LocalDateTime = LocalDateTime.now(),
 
-        @Column(name = "updated_at")
-        val updatedAt: LocalDateTime?
+        @Column(name = "updated_at", nullable = false)
+        val updatedAt: LocalDateTime = LocalDateTime.now(),
 ) {
     fun toDomain(): DailySchedule {
         return DailySchedule(
                 id = this.id,
                 accountId = this.accountId,
-                day = this.day ?: LocalDate.now(),
+                day = this.day,
                 createdAt = this.createdAt,
                 updatedAt = this.updatedAt
         )

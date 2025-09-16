@@ -5,9 +5,9 @@ import java.time.LocalTime
 
 data class ScheduleContent(
         val id: Long,
-        val dailySchedulesId: Long,
-        val userId: String,
-        val relationTypes: String?, // 'CALENDAR_GOOGLE_1', 'TODO', 'HABIT', null
+        val dailySchedulesId: Long, // (daily schedule fk)
+        val accountId: Long,
+        val relationTypes: String?, // 'CALENDAR_GOOGLE_1',
         val contents: String?,
         val useYn: String = "Y",
         val tagIds: String?, // JSON 배열
@@ -22,7 +22,7 @@ data class ScheduleContent(
         val colorCode: String?,
         val reminderMinutes: Int?,
         val externalEventId: String?, // 외부 캘린더 이벤트 ID
-        val connectionId: Long?, // 캘린더 연결 ID
+        val connectionId: Long?, // 캘린더 연결 ID (calendar connection fk)
         val sortOrder: Int = 0,
         val createdAt: LocalDateTime,
         val updatedAt: LocalDateTime
