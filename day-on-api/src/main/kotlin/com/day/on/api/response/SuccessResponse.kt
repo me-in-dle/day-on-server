@@ -1,4 +1,4 @@
-package com.day.on.common.response
+package com.day.on.api.response
 
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
