@@ -35,6 +35,7 @@ class CreateAccountController(
         @RequestParam("state", required = false) state: String?,
         response: HttpServletResponse
     ): ResponseEntity<Unit> {
+
         val connectAccount = connectSocialAccountPort.connect(code, ConnectType.matchConnectType(connectType))
         val account = createAccountUseCase.createAccount(connectAccount)
         authenticationTokenPort.issueAll(account.id).let { token ->
