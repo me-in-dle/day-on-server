@@ -3,20 +3,22 @@ package com.day.on.calendar.jpa
 import com.day.on.calendar.model.DailySchedule
 import jakarta.persistence.*
 import java.time.LocalDateTime
+import java.util.*
 
 
 @Entity
 @Table(name = "daily_schedules")
-data class DailyScheduleEntity(
+class DailyScheduleEntity(
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY)
         val id: Long = 0L,
 
         @Column(name = "account_id", nullable = false, columnDefinition = "BIGINT")
-        val accountId: Long,
+        val accountId: Long, // 유니크인덱스추가 ^^
 
+        // string으로해돋상관무 타입지정하기 ^^
         @Column(name = "day", nullable = false)
-        val day: LocalDateTime = LocalDateTime.now(),
+        val day: Date, // 유니크인덱스추가 ^^
 
         @Column(name = "created_at", nullable = false)
         val createdAt: LocalDateTime = LocalDateTime.now(),

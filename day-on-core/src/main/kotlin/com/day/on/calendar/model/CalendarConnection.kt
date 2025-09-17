@@ -7,11 +7,8 @@ data class CalendarConnection(
     val id: Long,
     val accountId: Long,
     val provider: ConnectType,
-    val accountEmail: String,
-    val accountName: String?,
     val isActive: Boolean = true,
-    val syncEnabled: Boolean = true,
-    val lastSynced: LocalDateTime?,
+    val lastSynced: LocalDateTime,
     val createdAt: LocalDateTime,
     val updatedAt: LocalDateTime
 )
