@@ -1,6 +1,6 @@
 package com.day.on.calendar.jpa
 
-import com.day.on.calendar.model.Priority
+import com.day.on.account.type.ConnectType
 import com.day.on.calendar.model.ScheduleContent
 import com.day.on.calendar.model.TaskStatus
 import jakarta.persistence.*
@@ -9,7 +9,7 @@ import java.time.LocalTime
 
 @Entity
 @Table(name = "schedule_contents")
-data class ScheduleContentEntity(
+class ScheduleContentEntity(
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY)
         val id: Long = 0L,
@@ -20,8 +20,15 @@ data class ScheduleContentEntity(
         @Column(name = "account_id", nullable = false, columnDefinition = "BIGINT")
         val accountId: Long,
 
+        @Enumerated(EnumType.STRING)
         @Column(name = "relation_types", length = 100)
-        val relationTypes: String?,
+        val relationTypes: ConnectType?,
+
+        @Column(name = "title", nullable = false, columnDefinition = "VARCHAR(100)")
+        val title: String,
+
+        @Column(name = "location", columnDefinition = "VARCHAR(100)")
+        val location: String?,
 
         @Column(name = "contents", columnDefinition = "TEXT")
         val contents: String?,
@@ -29,43 +36,18 @@ data class ScheduleContentEntity(
         @Column(name = "use_yn", nullable = false, length = 1)
         val useYn: String = "Y",
 
-        @Column(name = "tag_ids", columnDefinition = "JSON")
+        @Column(name = "tag_ids", columnDefinition = "VARCHAR(300)")
         val tagIds: String?,
 
-        @Column(name = "start_time")
-        val startTime: LocalTime?,
+        @Column(name = "start_time" , nullable = false)
+        val startTime: LocalTime,
 
-        @Column(name = "end_time")
-        val endTime: LocalTime?,
-
-        @Column(name = "is_all_day", nullable = false)
-        val isAllDay: Boolean = false,
-
-        @Column(name = "location", length = 500)
-        val location: String?,
+        @Column(name = "end_time" , nullable = false)
+        val endTime: LocalTime,
 
         @Enumerated(EnumType.STRING)
-        @Column(name = "priority")
-        val priority: Priority = Priority.NORMAL,
-
-        @Enumerated(EnumType.STRING)
-        @Column(name = "status")
-        val status: TaskStatus = TaskStatus.PENDING,
-
-        @Column(name = "color_code", length = 7)
-        val colorCode: String?,
-
-        @Column(name = "reminder_minutes")
-        val reminderMinutes: Int?,
-
-        @Column(name = "external_event_id")
-        val externalEventId: String?,
-
-        @Column(name = "connection_id")
-        val connectionId: Long?,
-
-        @Column(name = "sort_order")
-        val sortOrder: Int = 0,
+        @Column(name = "status", nullable = false)
+        val status: TaskStatus,
 
         @Column(name = "created_at", nullable = false,)
         val createdAt: LocalDateTime = LocalDateTime.now(),
@@ -79,20 +61,14 @@ data class ScheduleContentEntity(
                 dailySchedulesId = this.dailySchedulesId,
                 accountId = this.accountId,
                 relationTypes = this.relationTypes,
+                title = this.title,
+                location = this.location,
                 contents = this.contents,
                 useYn = this.useYn,
                 tagIds = this.tagIds,
                 startTime = this.startTime,
                 endTime = this.endTime,
-                isAllDay = this.isAllDay,
-                location = this.location,
-                priority = this.priority,
                 status = this.status,
-                colorCode = this.colorCode,
-                reminderMinutes = this.reminderMinutes,
-                externalEventId = this.externalEventId,
-                connectionId = this.connectionId,
-                sortOrder = this.sortOrder,
                 createdAt = this.createdAt,
                 updatedAt = this.updatedAt
         )
@@ -105,20 +81,14 @@ data class ScheduleContentEntity(
                     dailySchedulesId = domain.dailySchedulesId,
                     accountId = domain.accountId,
                     relationTypes = domain.relationTypes,
+                    title = domain.title,
                     contents = domain.contents,
                     useYn = domain.useYn,
                     tagIds = domain.tagIds,
                     startTime = domain.startTime,
                     endTime = domain.endTime,
-                    isAllDay = domain.isAllDay,
                     location = domain.location,
-                    priority = domain.priority,
                     status = domain.status,
-                    colorCode = domain.colorCode,
-                    reminderMinutes = domain.reminderMinutes,
-                    externalEventId = domain.externalEventId,
-                    connectionId = domain.connectionId,
-                    sortOrder = domain.sortOrder,
                     createdAt = domain.createdAt,
                     updatedAt = domain.updatedAt
             )

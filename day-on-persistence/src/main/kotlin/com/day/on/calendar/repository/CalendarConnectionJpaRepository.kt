@@ -6,4 +6,5 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface CalendarConnectionJpaRepository : JpaRepository<CalendarConnectionEntity, Long> {
+    fun existsByAccountId(accountId: Long): Boolean
 }
