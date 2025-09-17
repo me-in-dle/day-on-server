@@ -15,8 +15,8 @@ data class ScheduleContent(
         val useYn: String = "Y",
         val tagIds: String?,
 
-        val startTime: LocalTime,
         val endTime: LocalTime,
+        val startTime: LocalTime,
         val status: TaskStatus = TaskStatus.PENDING,
         val createdAt: LocalDateTime,
         val updatedAt: LocalDateTime
