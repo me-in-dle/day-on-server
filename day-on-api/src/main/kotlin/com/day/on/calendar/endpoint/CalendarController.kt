@@ -1,10 +1,10 @@
 package com.day.on.calendar.endpoint
 
 import com.day.on.account.endpoint.const.HeaderName
+import com.day.on.api.response.SuccessResponse
 import com.day.on.calendar.dto.CalendarResponse
 import com.day.on.calendar.dto.ScheduleContentResponse
 import com.day.on.calendar.usecase.inbound.CalendarQueryUseCase
-import com.day.on.common.response.SuccessResponse
 import com.day.on.calendar.usecase.dto.CalendarQueryResult
 import org.springframework.format.annotation.DateTimeFormat
 import org.springframework.web.bind.annotation.*
