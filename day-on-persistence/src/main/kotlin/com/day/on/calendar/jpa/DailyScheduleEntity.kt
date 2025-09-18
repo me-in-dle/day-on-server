@@ -2,6 +2,7 @@ package com.day.on.calendar.jpa
 
 import com.day.on.calendar.model.DailySchedule
 import jakarta.persistence.*
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.util.*
 
@@ -18,7 +19,7 @@ class DailyScheduleEntity(
 
         // string으로해돋상관무 타입지정하기 ^^
         @Column(name = "day", nullable = false)
-        val day: Date, // 유니크인덱스추가 ^^
+        val day: LocalDate, // 유니크인덱스추가 ^^
 
         @Column(name = "created_at", nullable = false)
         val createdAt: LocalDateTime = LocalDateTime.now(),

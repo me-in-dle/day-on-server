@@ -21,17 +21,21 @@ class CalendarController (
     */
     @GetMapping("/{date}")
     fun getCalendarByDate(@RequestHeader(HeaderName.ACCOUNT_ID) accountId: Long, @PathVariable @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) date: LocalDate) : SuccessResponse<CalendarResponse> {
-        return when (val result = calendarQueryUseCase.getByDate(accountId, date)) {
-            is CalendarQueryResult.NotConnected ->
-                SuccessResponse.of(CalendarResponse(isConnected = false, schedules = emptyList()))
+        val result = calendarQueryUseCase.getByDate(accountId, date)
 
-            is CalendarQueryResult.Connected ->
-                SuccessResponse.of(
-                        CalendarResponse(
-                                isConnected = true,
-                                schedules = result.schedules.map { ScheduleContentResponse.from(it) }
-                        )
-                )
+        val (isConnected, connectType, schedules) = when (result) {
+            is CalendarQueryResult.Connected -> Triple(true, result.connectType?.name, result.schedules)
+            is CalendarQueryResult.NotConnected -> Triple(false, null, result.schedules)
         }
+
+        val response = CalendarResponse(
+                isConnected = isConnected,
+                connectType = connectType,
+                schedules = schedules.map { ScheduleContentResponse.from(it) }
+        )
+
+        return SuccessResponse.of(response)
     }
+
+
 }
