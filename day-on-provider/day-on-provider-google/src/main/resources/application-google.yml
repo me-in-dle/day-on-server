@@ -8,3 +8,9 @@ google:
         - profile
         - email
       redirect-uri: "http://localhost:8080/api/v1/account/social/google"
+    calendar: # 캘린더 연동용
+      client-id: ${GOOGLE_CALENDAR_CLIENT_ID}
+      client-secret: ${GOOGLE_CALENDAR_SECRET_KEY}
+      scope:
+        - https://www.googleapis.com/auth/calendar
+      redirect-uri: "http://localhost:8080/api/v1/calendar/oauth/callback/google"

@@ -23,10 +23,10 @@ class CalendarConnectionEntity(
         val provider: ConnectType,
 
         @Column(name = "is_active", nullable = false)
-        val isActive: Boolean = true,
+        val isActive: Boolean = false,
 
-        @Column(name = "last_synced", nullable = false)
-        val lastSynced: LocalDateTime,
+        @Column(name = "last_synced")
+        val lastSynced: LocalDateTime? = null,
 
         @Column(name = "created_at", nullable = false)
         val createdAt: LocalDateTime = LocalDateTime.now(),

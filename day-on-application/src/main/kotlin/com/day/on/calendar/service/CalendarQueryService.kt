@@ -43,18 +43,14 @@ class CalendarQueryService(
 ) : CalendarQueryUseCase {
 
     override fun getByDate(accountId: Long, date: LocalDate): CalendarQueryResult {
-        // 1) 연동 여부 판단
-        if (!connectionPort.existsByAccountIdAndIsActive(accountId)) {
-            return CalendarQueryResult.NotConnected
-        }
+        val connection = connectionPort.findByAccountId(accountId)
 
-        // 1-1) TODO : lastSynced 확인
+        // 1-1) TODO : isActive + lastSynced 확인
         // 만약 월이 바뀜 → 이번 달 전체 동기화 다시 실행 (구글 API 호출 → DB 저장(당일이면 redis캐시))
-
 
         // 2) 당일 여부 조회
         val today = LocalDate.now()
-        val schedules = if (date == today) { // 당일이면 Redis 조회
+        val schedules = if (date == today) { // 당일이면 Redis 조회 // TODO : date.toString()
             cachePort.get(accountId, date)
                     ?: eventQueryPort.findByDate(accountId, date).also {
                         // 캐시 MISS → DB 조회 후 Redis 캐싱 (TTL 1시간)
@@ -65,7 +61,13 @@ class CalendarQueryService(
             eventQueryPort.findByDate(accountId, date)
         }
 
-        return CalendarQueryResult.Connected(schedules)
+        // 2) 연동 여부 판단 (연동 정보는 schedules 조회와 별개)
+        return if (connection?.isActive == true) {
+            CalendarQueryResult.Connected(schedules = schedules, connectType = connection.provider)
+        } else {
+            CalendarQueryResult.NotConnected(schedules = schedules)
+        }
+
     }
 
 
