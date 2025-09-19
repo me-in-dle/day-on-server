@@ -14,25 +14,23 @@ class GoogleOAuthUrlBuilder {
      */
 
     fun buildAuthUrl(
-            authBaseUrl: String,
-            clientId: String,
-            redirectUri: String,
-            scopeList: List<String>,
-            state: String,
-            accessType: String = "offline",
-            prompt: String = "consent"
+        authBaseUrl: String,
+        clientId: String,
+        redirectUri: String,
+        scopeList: List<String>,
+        state: String,
+        extraParams: Map<String, String> = emptyMap()
     ): String {
-        val scope = scopeList.joinToString(" ")
-        val enc = { s: String -> URLEncoder.encode(s, StandardCharsets.UTF_8) }
-        return buildString {
-            append(authBaseUrl)
-            append("?client_id=").append(enc(clientId))
-            append("&redirect_uri=").append(enc(redirectUri))
-            append("&response_type=code")
-            append("&scope=").append(enc(scope))
-            append("&access_type=").append(enc(accessType))
-            append("&prompt=").append(enc(prompt))
-            append("&state=").append(enc(state))
+        val sb = StringBuilder(authBaseUrl)
+        sb.append("?client_id=").append(encode(clientId))
+        sb.append("&redirect_uri=").append(encode(redirectUri))
+        sb.append("&response_type=code")
+        sb.append("&scope=").append(encode(scopeList.joinToString(" ")))
+        sb.append("&state=").append(encode(state))
+        extraParams.forEach { (k, v) ->
+            sb.append("&").append(encode(k)).append("=").append(encode(v))
         }
+        return sb.toString()
     }
+    private fun encode(v: String) = URLEncoder.encode(v, StandardCharsets.UTF_8.toString())
 }

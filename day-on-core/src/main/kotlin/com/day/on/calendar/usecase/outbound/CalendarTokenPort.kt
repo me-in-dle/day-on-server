@@ -1,7 +1,9 @@
 package com.day.on.calendar.usecase.outbound
 
-interface OAuthTokenPort {
-    // TODO : 패키지 이동 고려..
-    fun getAccessToken(accountId: Long): String?
-    fun refreshAccessToken(accountId: Long): String?
+import com.day.on.calendar.model.CalendarTokens
+
+interface CalendarTokenPort {
+    // 토큰 저장/조회
+    fun save(token: CalendarTokens)
+    fun findByAccountIdAndService(accountId: Long, service: String): CalendarTokens?
 }
