@@ -13,7 +13,7 @@ import javax.crypto.spec.SecretKeySpec
 @Component
 class HmacCalendarOAuthStateAdapter(
         @Value("\${calendar.oauth.state.secret}") private val secret: String,
-        @Value("\${calendar.oauth.redirect-uri:http://localhost:8080/api/v1/calendar/oauth/callback}") private val defaultRedirect: String,
+        @Value("\${google.calendar.redirect-uri}") private val defaultRedirect: String,
         private val googleCalendarProps: GoogleCalendarOauthProperties
 ) : CalendarOAuthStatePort {
 

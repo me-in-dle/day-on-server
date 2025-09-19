@@ -7,7 +7,7 @@ import org.springframework.stereotype.Component
 @Component
 class GoogleCalendarOAuthUrlAdapter (private val googleProperties: GoogleCalendarOauthProperties,
                                      private val urlBuilder: GoogleOAuthUrlBuilder,
-                                     @Value("\${calendar.oauth.redirect-uri:http://localhost:8080/api/v1/calendar/oauth/callback}") private val defaultRedirect: String) : CalendarOAuthUrlPort{
+                                     @Value("\${calendar.oauth.redirect-uri}") private val defaultRedirect: String) : CalendarOAuthUrlPort{
     private val authBaseUrl = "https://accounts.google.com/o/oauth2/v2/auth"
     // TODO : OAuth calender adapter (추후 공통 재사용 고려)
     override fun createCalendarAuthUrl(provider: String, state: String): String{

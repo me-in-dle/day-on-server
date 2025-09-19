@@ -44,7 +44,8 @@ class CalendarOAuthService(
         val connectType = try {
             ConnectType.matchConnectType(provider)
         } catch (ex: Exception) {
-            null // 또는 예외 던지기
+            // TODO : 예외 던지기
+            null
         }
 
         // 2) state payload 생성
