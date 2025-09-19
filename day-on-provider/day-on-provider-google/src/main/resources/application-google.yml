@@ -14,3 +14,10 @@ google:
       scope:
         - https://www.googleapis.com/auth/calendar
       redirect-uri: "http://localhost:8080/api/v1/calendar/oauth/callback/google"
+calendar:
+  oauth:
+    # state 서명에 사용할 시크릿
+    state:
+      secret: ${CALENDAR_OAUTH_STATE_SECRET}
+    # OAuth 후 클라이언트로 리다이렉트할 기본 URL (frontend)
+    client-redirect-url: ${CALENDAR_OAUTH_CLIENT_REDIRECT_URL:http://localhost:5173/calendar}

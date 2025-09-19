@@ -32,7 +32,6 @@ import java.util.*
  *    - 바로 DB 조회
  *
  * [추가]
- * - isConnected=true 받은 클라이언트는 이후부터 polling을 시작
  * - 웹훅에서 DB를 최신화
  */
 @Service

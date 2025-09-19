@@ -15,23 +15,30 @@ class CalendarCacheAdapter(
 ) : CalendarCachePort {
     override fun get(accountId: Long, date: LocalDate): List<ScheduleContent>? {
         val key = "calendar:$accountId:$date"
-        // RedisAdapter에서 String을 반환하도록 요청
         val raw: String = redisCacheAdapter.get(key, String::class.java) ?: return null
 
-        val json = if (raw.startsWith("\"") && raw.endsWith("\"")) {
-            // raw가 JSON으로 이스케이프된 문자열이면, objectMapper로 언에스케이프해서 실제 JSON 획득
-            objectMapper.readValue(raw, String::class.java)
-        } else {
-            raw
+        return try {
+            val json = if (raw.startsWith("\"") && raw.endsWith("\"")) {
+                objectMapper.readValue(raw, String::class.java)
+            } else {
+                raw
+            }
+            objectMapper.readValue(json, object : TypeReference<List<ScheduleContent>>() {})
+        } catch (ex: Exception) {
+            null // 역직렬화 실패 시
         }
-
-        return objectMapper.readValue(json, object : TypeReference<List<ScheduleContent>>() {})
     }
 
     override fun put(accountId: Long, date: LocalDate, schedules: List<ScheduleContent>, ttlSeconds: Long) {
         val key = "calendar:$accountId:$date"
-        // 따라서 객체를 그대로 넘겨서(직렬화는 RedisAdapter가 하게) 한 번만 직렬화되도록 한다.
-        redisCacheAdapter.put(key, schedules, ttlSeconds * 1000)
+
+        try {
+            // Jackson으로 직접 JSON 문자열 생성
+            val json = objectMapper.writeValueAsString(schedules)
+            redisCacheAdapter.put(key, json, ttlSeconds * 1000)
+        } catch (ex: Exception) {
+            throw RuntimeException("Failed to serialize schedules for cache", ex)
+        }
     }
 
 
