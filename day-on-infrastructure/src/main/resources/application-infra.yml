@@ -5,7 +5,10 @@ spring:
         port: 6379
         repositories:
           enabled: false
-
+  calendar:
+    token:
+      encryption:
+        key: ${CALENDAR_TOKEN_ENCRYPTION_KEY}
 logging:
   level:
     com.day.on: DEBUG

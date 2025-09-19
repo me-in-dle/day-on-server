@@ -1,15 +1,15 @@
 package com.day.on.calendar.jpa
 
 import com.day.on.account.type.ConnectType
-import com.day.on.common.model.CalendarTokens
+import com.day.on.calendar.model.CalendarTokens
 import jakarta.persistence.*
 import java.time.LocalDateTime
 
 @Entity
 @Table(name = "calendar_tokens")
-class CalendarTokenEntity(
+class CalendarTokensEntity(
 
-        // TODO : access token은 redis 에 저장 여부 고려.. + 패키지 이동
+        // TODO : access token은 redis 에 저장 여부 고려..
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY)
         val id: Long = 0L,
@@ -22,10 +22,10 @@ class CalendarTokenEntity(
         val connectType: ConnectType,
 
         // 찾아보기
-        @Column(name = "access_token", length = 1000)
+        @Column(name = "access_token", length = 2000)
         val accessToken: String,
 
-        @Column(name = "refresh_token", length = 1000, nullable = false)
+        @Column(name = "refresh_token", length = 2000, nullable = false)
         val refreshToken: String,
 
         @Column(name = "created_at", nullable = false)
@@ -47,8 +47,8 @@ class CalendarTokenEntity(
     }
 
     companion object {
-        fun fromDomain(domain: CalendarTokens): CalendarTokenEntity {
-            return CalendarTokenEntity(
+        fun fromDomain(domain: CalendarTokens): CalendarTokensEntity {
+            return CalendarTokensEntity(
                     accountId = domain.accountId,
                     connectType = domain.connectType,
                     accessToken = domain.accessToken,
