@@ -19,9 +19,8 @@ data class EventMessageJpaEntity(
         val metaData: String? = null,
 
 
-        @Column(name = "message", columnDefinition = "json")
+        @Column(name = "message", columnDefinition = "TEXT")
         val message: String? = null,
-
 
         @Column(name = "status", length = 20)
         @Enumerated(EnumType.STRING)
