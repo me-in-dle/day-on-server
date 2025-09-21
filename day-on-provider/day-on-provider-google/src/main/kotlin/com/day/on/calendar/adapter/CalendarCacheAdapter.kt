@@ -40,6 +40,10 @@ class CalendarCacheAdapter(
             throw RuntimeException("Failed to serialize schedules for cache", ex)
         }
     }
+    override fun evict(accountId: Long, date: LocalDate) {
+        val key = "calendar:$accountId:$date"
+        redisCacheAdapter.delete(key)
+    }
 
 
 }

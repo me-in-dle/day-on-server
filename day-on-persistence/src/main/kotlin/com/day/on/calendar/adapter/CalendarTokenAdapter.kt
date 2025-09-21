@@ -65,12 +65,12 @@ class CalendarTokenAdapter(
     /**
      * findByAccountIdAndService: 포트 시그니처에 맞춰서 service:String을 받아 처리.
      * service는 ConnectType 이름(예: "GOOGLE", "KAKAO")으로 보냄
-     */
-    override fun findByAccountIdAndService(accountId: Long, service: String): CalendarTokens? {
+    */
+    override fun findByAccountIdAndConnectType(accountId: Long, connectType: String): CalendarTokens? {
         val connectType = try {
-            ConnectType.matchConnectType(service)
+            ConnectType.matchConnectType(connectType)
         } catch (ex: Exception) {
-            logger.warn("Invalid connect type: $service", ex)
+            logger.warn("Invalid connect type: $connectType", ex)
             return null
         }
 

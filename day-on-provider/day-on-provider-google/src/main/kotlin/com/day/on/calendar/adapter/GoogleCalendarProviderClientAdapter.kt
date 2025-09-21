@@ -4,18 +4,21 @@ import com.day.on.account.type.ConnectType
 import com.day.on.calendar.client.GoogleCalendarFeign
 import com.day.on.calendar.client.GoogleOauthFeign
 import com.day.on.calendar.dto.GoogleCalendarEvent
+import com.day.on.calendar.dto.GoogleCalendarListEntry
 import com.day.on.calendar.model.CalendarTokens
 import com.day.on.calendar.model.ScheduleContent
 import com.day.on.calendar.model.TaskStatus
 import com.day.on.calendar.usecase.outbound.CalendarProviderClientPort
 import org.springframework.stereotype.Component
 import org.springframework.util.LinkedMultiValueMap
+import java.net.URLEncoder
 import java.time.*
 import java.time.format.DateTimeFormatter
 
 /*
 * 구글 토큰 호출
 * 구글 auth code -> token 을 저장하는 어댑터
+* 이벤트 리스트를 호출하는 어댑터
 */
 @Component
 class GoogleCalendarProviderClientAdapter (
@@ -51,104 +54,157 @@ class GoogleCalendarProviderClientAdapter (
         )
     }
 
-    override fun fetchEventsForMonth(connectType: ConnectType, accessToken: String, year: Int, month: Int): List<ScheduleContent> {
-        // 1) 먼저 calendarList 조회해서 primary 캘린더 id와 timezone을 결정
+    override fun fetchEventsForDateRange(
+            connectType: ConnectType,
+            accessToken: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+    ): List<Pair<LocalDate, ScheduleContent>> {
         val authHeader = "Bearer $accessToken"
         val calListResp = calendarClient.listCalendarList(authHeader)
-        val calendarEntry = calListResp.items.firstOrNull { it.primary == true }
-                ?: calListResp.items.firstOrNull()
-                ?: throw IllegalStateException("No calendar available for user")
 
-        val calendarId = calendarEntry.id
-        val calendarTimeZone = calendarEntry.timeZone ?: "UTC"
+        val primaryCalendar = calListResp.items.firstOrNull { it.primary == true }
 
-        // 2) time range: 사용자의 캘린더 timeZone 기준으로 월 시작/종료를 계산한 뒤 UTC로 변환
-        val ym = YearMonth.of(year, month)
-        val zone = try { ZoneId.of(calendarTimeZone) } catch (_: Exception) { ZoneOffset.UTC }
-        val startZdt = ym.atDay(1).atStartOfDay(zone).withZoneSameInstant(ZoneOffset.UTC)
-        val endZdt = ym.atEndOfMonth().atTime(23, 59, 59).atZone(zone).withZoneSameInstant(ZoneOffset.UTC)
+        if (primaryCalendar == null) {
+            logger.warn("[fetchEventsForDateRange] : primaray 캘린더가 없습니다.")
+            return emptyList()
+        }
 
-        logger.info("Fetching Google events calendarId={}, tz={}, timeMin={}, timeMax={}", calendarId, calendarTimeZone, startZdt, endZdt)
+        logger.info("Syncing primary calendar: ${primaryCalendar.summary}")
 
-        val results = mutableListOf<ScheduleContent>()
+        return try {
+            fetchEventsFromCalendar(primaryCalendar, authHeader, startDate, endDate)
+        } catch (e: Exception) {
+            logger.warn("Failed to fetch from primary calendar: ${primaryCalendar.summary}", e)
+            emptyList()
+        }
+    }
+
+    private fun fetchEventsFromCalendar(
+            calendar: GoogleCalendarListEntry,
+            authHeader: String,
+            startDate: LocalDate,
+            endDate: LocalDate
+    ): List<Pair<LocalDate, ScheduleContent>> {
+        val calendarId = calendar.id
+        val zone = try {
+            ZoneId.of(calendar.timeZone ?: "UTC")  // 구글 캘린더의 타임존
+        } catch (_: Exception) {
+            ZoneOffset.UTC
+        }
+
+        // 동기화할 시간 범위 (UTC 기준으로 변환)
+        val startZdt = startDate.atStartOfDay(zone).withZoneSameInstant(ZoneOffset.UTC)
+        val endZdt = endDate.atTime(23, 59, 59).atZone(zone).withZoneSameInstant(ZoneOffset.UTC)
+
+        val results = mutableListOf<Pair<LocalDate, ScheduleContent>>()
         var pageToken: String? = null
 
-        do {
+        while (true) {
             val resp = calendarClient.listEvents(
-                    calendarId = java.net.URLEncoder.encode(calendarId, Charsets.UTF_8.name()),
+                    calendarId = URLEncoder.encode(calendarId, "UTF-8"),
                     authorization = authHeader,
                     timeMin = startZdt.format(rfc3339),
                     timeMax = endZdt.format(rfc3339),
-                    pageToken = pageToken
+                    pageToken = pageToken,
+                    maxResults = 250
             )
 
-            logger.debug("Google listEvents result: items.size={}, nextPageToken={}", resp.items.size, resp.nextPageToken)
-
             resp.items.forEach { ge ->
-                results.add(mapGoogleEventToScheduleContent(ge))
+                results.add(mapGoogleEventToScheduleContent(ge, calendar.summary))
             }
+
             pageToken = resp.nextPageToken
-        } while (!pageToken.isNullOrBlank())
+            if (pageToken.isNullOrBlank()) break
+        }
+        // 다음 페이지가 있으면 반복
 
         return results
     }
 
-    private fun mapGoogleEventToScheduleContent(ge: GoogleCalendarEvent): ScheduleContent {
-        // DB에서 ID를 발급하므로 여기선 0L 사용
-        val (startTime, endTime) = parseStartEndToLocalTimes(ge)
 
-        return ScheduleContent(
+    private fun mapGoogleEventToScheduleContent(
+            ge: GoogleCalendarEvent,
+            calendarName: String?
+    ): Pair<LocalDate, ScheduleContent> {
+
+        logger.debug("Google Event fetched: id=${ge.id}, summary=${ge.summary}, " +
+                "start=${ge.start}, end=${ge.end}, location=${ge.location}, desc=${ge.description}")
+
+        val (startTime, endTime) = parseStartEndToLocalTimes(ge)
+        val eventDate = extractEventDate(ge)
+
+        val content = ScheduleContent(
                 id = 0L,
-                dailySchedulesId = 0L,
-                accountId = 0L, // saveMonthly에서 accountId로 대체될 예정
+                dailySchedulesId = 0L, // Adapter 단계에서 채움
+                accountId = 0L,        // Adapter 단계에서 채움
                 relationTypes = ConnectType.GOOGLE,
-                title = ge.summary ?: "",
+                title = ge.summary ?: "(제목 없음)",
                 location = ge.location,
                 contents = ge.description,
                 useYn = "Y",
-                tagIds = null,
-                endTime = endTime,
+                tagIds = "Google",
                 startTime = startTime,
-                status = TaskStatus.IN_PROGRESS,
+                endTime = endTime,
+                status = determineStatus(calendarName),
                 createdAt = LocalDateTime.now(),
                 updatedAt = LocalDateTime.now()
         )
+
+        return eventDate to content
     }
 
+    /** 이벤트 날짜 추출 */
+    private fun extractEventDate(ge: GoogleCalendarEvent): LocalDate {
+        return ge.start?.get("dateTime")?.let {
+            OffsetDateTime.parse(it).toLocalDate()
+        } ?: ge.start?.get("date")?.let {
+            LocalDate.parse(it)
+        } ?: LocalDate.now()
+    }
+
+    /** 상태 결정 */
+    private fun determineStatus(calendarName: String?): TaskStatus {
+        return if (calendarName?.contains("task", ignoreCase = true) == true) {
+            TaskStatus.TODO
+        } else {
+            TaskStatus.IN_PROGRESS
+        }
+    }
+
+
+    /**
+     * Google의 start/end를 LocalTime으로 변환
+     */
     private fun parseStartEndToLocalTimes(ge: GoogleCalendarEvent): Pair<LocalTime, LocalTime> {
-        // 우선 시도: dateTime (with offset) -> parse as OffsetDateTime -> convert to LocalTime (UTC 혹은 서버 기준)
         val startRaw = ge.start?.get("dateTime") ?: ge.start?.get("date")
         val endRaw = ge.end?.get("dateTime") ?: ge.end?.get("date")
 
         fun toLocalTime(raw: String?): LocalTime {
             if (raw == null) return LocalTime.MIDNIGHT
+
             return try {
                 if (raw.contains("T")) {
-                    // DateTime with offset or zone
-                    val odt = OffsetDateTime.parse(raw)
-                    odt.toLocalTime()
+                    // DateTime 형식 (2025-01-15T10:00:00+09:00)
+                    OffsetDateTime.parse(raw).toLocalTime()
                 } else {
-                    // All-day event (date only) -> start: 00:00, end: 23:59
+                    // Date 형식 (2025-01-15) - 종일 일정
                     LocalTime.MIDNIGHT
                 }
             } catch (ex: Exception) {
-                // Fallback: parse as LocalDate
-                try {
-                    LocalDate.parse(raw).atStartOfDay().toLocalTime()
-                } catch (_: Exception) {
-                    LocalTime.MIDNIGHT
-                }
+                logger.warn("Failed to parse time: $raw", ex)
+                LocalTime.MIDNIGHT
             }
         }
 
-        val s = toLocalTime(startRaw)
-        val e = if (endRaw != null && !endRaw.contains("T")) {
-            // end as date -> set end to 23:59 to represent whole day
+        val startTime = toLocalTime(startRaw)
+        val endTime = if (endRaw != null && !endRaw.contains("T")) {
+            // 종일 일정의 경우 끝 시간을 23:59로 설정
             LocalTime.of(23, 59)
         } else {
             toLocalTime(endRaw)
         }
 
-        return Pair(s, e)
+        return Pair(startTime, endTime)
     }
 }

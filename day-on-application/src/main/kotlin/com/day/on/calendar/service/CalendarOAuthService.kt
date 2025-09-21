@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
 import java.util.*
@@ -26,8 +27,6 @@ class CalendarOAuthService(
         private val tokenPort: CalendarTokenPort,
         private val eventSyncPort: CalendarEventSyncPort,
         private val connectionPort: CalendarConnectionPort,
-        private val lockManager: LockManager,
-        private val objectMapper: ObjectMapper
 
 ) : CalendarOAuthUseCase {
 
@@ -89,51 +88,63 @@ class CalendarOAuthService(
         // 2) provider에 등록된 서버 redirectUri 획득
         val redirectUriUsed = statePort.redirectUriForProvider(connectType)
 
+        /*
+        * 전략:
+        * 1. 토큰 저장
+        * 2. 일주일 동기 처리
+        * 3. 동기화 성공 시에만 connection 저장
+        * 4. 이후 유저 진입 시 재 호출
+        */
+
+        // TODO : 기존 연동 상태 확인 후 -> 활성이면 토큰 갱신 , 새 연동이면 연동 (클라이언트 단에서도 중복 연동 안 되게 처리)
         // 3) code -> token
         val token = providerClient.exchangeCodeForToken(ct, code, redirectUriUsed)
 
         // 4) 토큰 저장
         tokenPort.save(token.copy(accountId = accountId))
 
-        // 5) 이번 달 이벤트 전체 동기화 시도
+        // 5) 일주일치 초기 동기화
+        var weekSyncSuccess = false
         try {
-            val now = LocalDateTime.now()
-            val ym = YearMonth.of(now.year, now.monthValue)
-            val events = providerClient.fetchEventsForMonth(ct, token.accessToken, ym.year, ym.monthValue)
-            logger.info("Fetched events for ${ym}: size=${events.size}, events=$events")
-            // TODO : 분산락
-            try {
-                eventSyncPort.saveMonthly(accountId, ym.year, ym.monthValue, events)
+            val today = LocalDate.now()
+            val weekEnd = today.plusDays(7)
 
-                logger.info("Fetched events for $ym : size=${events.size}")
-                try {
-                    logger.debug("Fetched events JSON: ${objectMapper.writeValueAsString(events)}")
-                } catch (ex: Exception) {
-                    logger.warn("Failed to log events as JSON", ex)
-                }
-            } catch (ex: Exception) {
-                // DB 저장 실패면 기록하고 정책에 따라 처리하되, 캐시 실패 때문에 전체 롤백되는 건 막자!!!!!
-                logger.warn("initial sync failed", ex)
+            logger.info("Starting week sync for accountId=$accountId ($today ~ $weekEnd)")
+
+            // daily schedules 미리 범위만큼 적재
+            eventSyncPort.createDailySchedulesForRange(accountId, today, weekEnd)
+
+            val weekEvents = providerClient.fetchEventsForDateRange(
+                    ct, token.accessToken, today, weekEnd
+            )
+
+            if (weekEvents.isNotEmpty()) {
+                eventSyncPort.saveEventsForDateRange(accountId, today, weekEnd, weekEvents)
             }
 
-        } catch (ex: Exception) {
-            // 초기 동기화 실패: 정책에 따라 롤백
-            // TODO : 정책 따라서 수정하기
-            logger.warn("initial sync failed", ex)
-        }
+            weekSyncSuccess = true
+            logger.info("Week sync completed: ${weekEvents.size} events")
 
-        // 6) CalendarConnection 저장 및 업데이트 (isActive = true)
-        val connection = CalendarConnection(
-                id = 0L,
-                accountId = accountId,
-                provider = ct,
-                isActive = true,
-                lastSynced = LocalDateTime.now(),
-                createdAt = LocalDateTime.now(),
-                updatedAt = LocalDateTime.now()
-        )
-        // 분산락 or account id, connect type 유니크 upsert
-        connectionPort.save(connection)
+        } catch (ex: Exception) {
+            logger.error("Week sync failed for accountId=$accountId", ex)
+            throw IllegalStateException("Initial calendar sync failed. Please try again.", ex)
+        }
+        // 6. 동기화 성공 시에만 connection 저장
+        if (weekSyncSuccess) {
+            val connection = CalendarConnection(
+                    id = 0L,
+                    accountId = accountId,
+                    provider = ct,
+                    isActive = true,
+                    lastSynced = LocalDateTime.now(),
+                    createdAt = LocalDateTime.now(),
+                    updatedAt = LocalDateTime.now()
+            )
+
+            // 기존 연결이 있으면 업데이트, 없으면 생성
+            connectionPort.save(connection)
+            logger.info("Calendar connection saved: accountId=$accountId, provider=$ct")
+        }
 
         // 7) 클라이언트로 리다이렉트할 URL 결정 (state.forwardUrl 우선)
         val forward = payload.forwardUrl ?: defaultClientRedirect

@@ -24,11 +24,6 @@ class CalendarOAuthController(
             @RequestParam provider: String,
             @RequestParam(required = false) forwardUrl : String?
     ): SuccessResponse<String> {
-        // validate forwardUrl origin (화이트리스트)
-//        if (forwardUrl != null && !redirectValidator.isAllowed(forwardUrl)) {
-//            throw IllegalArgumentException("invalid redirect url")
-//        }
-        // TODO: forwardUrl 화이트리스트 검증
         val url = calendarOAuthUseCase.generateCalendarOAuthUrl(accountId, provider, forwardUrl)
         return SuccessResponse.of(url)
     }
