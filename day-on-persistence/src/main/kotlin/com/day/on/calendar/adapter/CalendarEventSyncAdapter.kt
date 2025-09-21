@@ -32,67 +32,48 @@ class CalendarEventSyncAdapter(
             startDate: LocalDate,
             endDate: LocalDate,
             events: List<Pair<LocalDate, ScheduleContent>>
-    ): Unit {
-        // 1. 날짜 범위의 DailySchedule들 조회
+    ) {
+        if (events.isEmpty()) {
+            logger.info("No events to save for $startDate~$endDate")
+            return
+        }
+
         val dates = generateSequence(startDate) { it.plusDays(1) }
                 .takeWhile { !it.isAfter(endDate) }
                 .toList()
 
-        val dailySchedules = dailyRepo.findByAccountIdAndDayIn(accountId, dates)
-        val dailyMap = dailySchedules.associateBy { it.day }
+        val dailyMap = dailyRepo.findByAccountIdAndDayIn(accountId, dates)
+                .associateBy { it.day }
 
-        logger.info("Found ${dailySchedules.size} DailySchedules for range $startDate~$endDate")
-
-        if (events.isEmpty()) {
-            logger.info("No events to save")
-            return
-        }
-
-        // TODO : upsert 방식으로 변환
-        // 2. 기존 Google 이벤트 삭제 (이벤트가 있는 날짜만)
-        events.map { it.first }
-                .distinct()
-                .forEach { day ->
-                    dailyMap[day]?.let { daily ->
-                        contentRepo.deleteByDailySchedulesIdAndRelationTypes(
-                                daily.id,
-                                ConnectType.GOOGLE
-                        )
-                    }
-                }
-
-        // 3. 새 이벤트 저장 - 각 이벤트를 해당 날짜의 DailySchedule에 매핑
         val entities = events.mapNotNull { (eventDate, event) ->
-            val dailyId = dailyMap[eventDate]?.id
-
-            if (dailyId == null) {
-                logger.warn("No DailySchedule found for $eventDate, skipping event: ${event.title}")
-                return@mapNotNull null
+            dailyMap[eventDate]?.let { daily ->
+                ScheduleContentEntity(
+                        id = 0L,
+                        dailySchedulesId = daily.id,
+                        accountId = accountId,
+                        externalEventId = event.externalEventId,
+                        relationTypes = event.relationTypes,
+                        title = event.title,
+                        location = event.location,
+                        contents = event.contents,
+                        useYn = event.useYn,
+                        tagIds = event.tagIds,
+                        startTime = event.startTime,
+                        endTime = event.endTime,
+                        status = event.status,
+                        createdAt = event.createdAt,
+                        updatedAt = event.updatedAt
+                )
             }
-
-            ScheduleContentEntity(
-                    id = 0L,
-                    dailySchedulesId = dailyId,
-                    accountId = accountId,
-                    relationTypes = event.relationTypes,
-                    title = event.title,
-                    location = event.location,
-                    contents = event.contents,
-                    useYn = event.useYn,
-                    tagIds = event.tagIds,
-                    startTime = event.startTime,
-                    endTime = event.endTime,
-                    status = event.status,
-                    createdAt = event.createdAt,
-                    updatedAt = event.updatedAt
-            )
         }
 
         contentRepo.saveAll(entities)
-        logger.info("Saved ${entities.size} events for range $startDate~$endDate")
+        logger.info("Inserted ${entities.size} new events for $startDate~$endDate")
 
         updateCacheSafely(accountId, dates, dailyMap, entities)
     }
+
+
 
     private fun updateCacheSafely(
             accountId: Long,
@@ -133,6 +114,7 @@ class CalendarEventSyncAdapter(
                 id = if (event.id == 0L) 0L else event.id,
                 dailySchedulesId = daily.id,
                 accountId = accountId,
+                externalEventId = event.externalEventId,
                 relationTypes = null,
                 title = event.title,
                 location = event.location,

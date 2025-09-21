@@ -32,60 +32,56 @@ class AsyncCalendarSyncAdapter(
             currentDate: LocalDate
     ) {
         try {
-            val start = currentDate.minusDays(4)
-            val end = currentDate.plusDays(4)
+            val checkStart = currentDate.minusDays(4)
+            val checkEnd = currentDate.plusDays(4)
 
-            // 1. DailySchedules 범위 존재 여부 확인
-            val hasMissing = eventQueryPort.hasMissingDailySchedules(accountId, start, end)
-
-
-            if (!hasMissing) {
-                logger.debug("Prefetch skipped: DailySchedules already exist for accountId=$accountId, range=$start~$end")
+            // 1. ±4일 범위에 빠진 날 있는지 확인
+            val missingAround = eventQueryPort.findMissingDays(accountId, checkStart, checkEnd)
+            if (missingAround.isEmpty()) {
+                logger.debug("Prefetch skipped: all days exist for $accountId, range=$checkStart~$checkEnd")
                 return
             }
 
-            logger.info("Prefetch needed for accountId=$accountId, range=$start~$end")
+            val syncStart = currentDate
+            val syncEnd = currentDate.plusDays(7)
 
-            // 2. 분산락으로 중복 동기화 방지
             val lockKey = "calendar:prefetch:$accountId"
 
             try {
                 lockManager.lock(lockKey) {
-                    // double-check
-                    val stillNeedsSync = eventQueryPort.hasMissingDailySchedules(accountId, start, end)
-
-                    if (!stillNeedsSync) {
-                        logger.debug("DailySchedules already created by another process")
+                    val stillMissing = eventQueryPort.findMissingDays(accountId, syncStart, syncEnd)
+                    if (stillMissing.isEmpty()) {
+                        logger.debug("No missing days after lock for $accountId")
                         return@lock
                     }
 
-                    val syncStart = currentDate
-                    val syncEnd   = currentDate.plusDays(7)
+                    val missingStart = stillMissing.minOrNull()!!
+                    val missingEnd = stillMissing.maxOrNull()!!
 
-                    // DB에 저장 (DailySchedules 생성 + 이벤트 저장)
-                    eventSyncPort.createDailySchedulesForRange(accountId, syncStart, syncEnd)
+                    // 2. 없는 날 DailySchedule만 생성
+                    eventSyncPort.createDailySchedulesForRange(accountId, missingStart, missingEnd)
 
-                    // 3. 외부에서 데이터 가져오기
                     val events = providerClientPort.fetchEventsForDateRange(
                             connectType,
                             accessToken,
-                            syncStart,
-                            syncEnd
+                            missingStart,
+                            missingEnd
                     )
 
                     if (events.isNotEmpty()) {
-                        eventSyncPort.saveEventsForDateRange(accountId, syncStart, syncEnd, events)
-                        logger.info("Prefetch completed: accountId=$accountId, events=${events.size}")
+                        eventSyncPort.saveEventsForDateRange(accountId, missingStart, missingEnd, events)
+                        logger.info("Prefetch completed: accountId=$accountId, events=${events.size}, range=$missingStart~$missingEnd")
                     } else {
-                        logger.info("Prefetch completed: no events found for accountId=$accountId")
+                        logger.info("Prefetch completed: no events found for $accountId, range=$missingStart~$missingEnd")
                     }
                 }
             } catch (e: IllegalStateException) {
-                logger.debug("Prefetch already in progress for accountId=$accountId: ${e.message}")
+                logger.debug("Prefetch already in progress for $accountId: ${e.message}")
             }
 
         } catch (e: Exception) {
             logger.error("Prefetch failed for accountId=$accountId, currentDate=$currentDate", e)
         }
     }
+
 }

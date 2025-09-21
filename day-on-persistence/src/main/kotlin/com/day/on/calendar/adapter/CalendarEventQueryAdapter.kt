@@ -4,12 +4,10 @@ import com.day.on.calendar.model.ScheduleContent
 import com.day.on.calendar.repository.DailyScheduleJpaRepository
 import com.day.on.calendar.repository.ScheduleContentJpaRepository
 import com.day.on.calendar.usecase.outbound.CalendarEventQueryPort
-import com.querydsl.jpa.impl.JPAQueryFactory
 import org.springframework.transaction.annotation.Transactional
 import org.springframework.stereotype.Repository
 import java.time.LocalDate
-import java.time.temporal.ChronoUnit
-import java.util.*
+
 
 @Repository
 @Transactional(readOnly = true)
@@ -26,10 +24,15 @@ class CalendarEventQueryAdapter(
                 .map { it.toDomain() }
     }
 
+    override fun findMissingDays(accountId: Long, start: LocalDate, end: LocalDate): List<LocalDate> {
+        val existingDays = dailyScheduleJpaRepository.findByAccountIdAndDayBetween(accountId, start, end)
+                .map { it.day }
+                .toSet()
 
-    override fun hasMissingDailySchedules(accountId: Long, startDate: LocalDate, endDate: LocalDate): Boolean {
-        val totalDays = ChronoUnit.DAYS.between(startDate, endDate) + 1
-        val existingCount = dailyScheduleJpaRepository.countByAccountIdAndDayBetween(accountId, startDate, endDate)
-        return existingCount < totalDays
+        return generateSequence(start) { it.plusDays(1) }
+                .takeWhile { !it.isAfter(end) }
+                .filterNot { it in existingDays }
+                .toList()
     }
+
 }

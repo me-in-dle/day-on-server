@@ -8,7 +8,14 @@ import java.time.LocalDateTime
 import java.time.LocalTime
 
 @Entity
-@Table(name = "schedule_contents")
+@Table(
+        name = "schedule_contents",
+        uniqueConstraints = [
+            UniqueConstraint(
+                    name = "uk_account_relation_event",
+                    columnNames = ["account_id", "relation_types", "external_event_id"]
+            )
+        ])
 class ScheduleContentEntity(
         @Id
         @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -16,6 +23,9 @@ class ScheduleContentEntity(
 
         @Column(name = "daily_schedules_id", nullable = false)
         val dailySchedulesId: Long,
+
+        @Column(name = "external_event_id", columnDefinition = "VARCHAR(255)")
+        val externalEventId: String?,
 
         @Column(name = "account_id", nullable = false, columnDefinition = "BIGINT")
         val accountId: Long,
@@ -39,17 +49,17 @@ class ScheduleContentEntity(
         @Column(name = "tag_ids", columnDefinition = "VARCHAR(300)")
         val tagIds: String?,
 
-        @Column(name = "start_time" , nullable = false)
+        @Column(name = "start_time", nullable = false)
         val startTime: LocalTime,
 
-        @Column(name = "end_time" , nullable = false)
+        @Column(name = "end_time", nullable = false)
         val endTime: LocalTime,
 
         @Enumerated(EnumType.STRING)
         @Column(name = "status", nullable = false)
         val status: TaskStatus,
 
-        @Column(name = "created_at", nullable = false,)
+        @Column(name = "created_at", nullable = false)
         val createdAt: LocalDateTime = LocalDateTime.now(),
 
         @Column(name = "updated_at", nullable = false)
@@ -60,6 +70,7 @@ class ScheduleContentEntity(
                 id = this.id,
                 dailySchedulesId = this.dailySchedulesId,
                 accountId = this.accountId,
+                externalEventId = this.externalEventId,
                 relationTypes = this.relationTypes,
                 title = this.title,
                 location = this.location,
@@ -80,6 +91,7 @@ class ScheduleContentEntity(
                     id = domain.id,
                     dailySchedulesId = domain.dailySchedulesId,
                     accountId = domain.accountId,
+                    externalEventId = domain.externalEventId,
                     relationTypes = domain.relationTypes,
                     title = domain.title,
                     contents = domain.contents,

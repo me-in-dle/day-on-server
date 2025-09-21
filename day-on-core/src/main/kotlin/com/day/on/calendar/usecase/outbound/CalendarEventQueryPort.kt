@@ -8,5 +8,6 @@ interface CalendarEventQueryPort {
     /** DB에서 날짜별 통합 일정 조회 */
     fun findByDate(accountId: Long, date: LocalDate): List<ScheduleContent>
 
-    fun hasMissingDailySchedules(accountId: Long, startDate: LocalDate, endDate: LocalDate): Boolean
+    fun findMissingDays(accountId: Long, start: LocalDate, end: LocalDate): List<LocalDate>
+
 }

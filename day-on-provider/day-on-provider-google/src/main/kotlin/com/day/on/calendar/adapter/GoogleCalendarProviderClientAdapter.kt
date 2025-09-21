@@ -138,6 +138,7 @@ class GoogleCalendarProviderClientAdapter (
                 id = 0L,
                 dailySchedulesId = 0L, // Adapter 단계에서 채움
                 accountId = 0L,        // Adapter 단계에서 채움
+                externalEventId = ge.id,
                 relationTypes = ConnectType.GOOGLE,
                 title = ge.summary ?: "(제목 없음)",
                 location = ge.location,
@@ -168,7 +169,7 @@ class GoogleCalendarProviderClientAdapter (
         return if (calendarName?.contains("task", ignoreCase = true) == true) {
             TaskStatus.TODO
         } else {
-            TaskStatus.IN_PROGRESS
+            TaskStatus.PENDING
         }
     }
 
