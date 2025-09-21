@@ -11,6 +11,8 @@ import com.day.on.calendar.usecase.outbound.CalendarEventSyncPort
 import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Component
 import org.springframework.transaction.annotation.Transactional
+import org.springframework.transaction.support.TransactionSynchronization
+import org.springframework.transaction.support.TransactionSynchronizationManager
 import java.time.LocalDate
 import java.time.LocalDateTime
 
@@ -70,32 +72,34 @@ class CalendarEventSyncAdapter(
         contentRepo.saveAll(entities)
         logger.info("Inserted ${entities.size} new events for $startDate~$endDate")
 
-        updateCacheSafely(accountId, dates, dailyMap, entities)
+        updateCacheSafelyAfterCommit(accountId, dates, dailyMap, entities)
     }
 
-
-
-    private fun updateCacheSafely(
+    private fun updateCacheSafelyAfterCommit(
             accountId: Long,
             dates: List<LocalDate>,
             dailyMap: Map<LocalDate, DailyScheduleEntity>,
-            entities: List<ScheduleContentEntity> // 저장한 이벤트 엔티티
+            entities: List<ScheduleContentEntity>
     ) {
         val today = LocalDate.now()
-        if (today in dates) {
-            try {
-                val todaySchedules = entities
-                        .filter { dailyMap[today]?.id == it.dailySchedulesId }
-                        .map { it.toDomain() }
+        if (today !in dates) return
 
-                if (todaySchedules.isNotEmpty()) {
-                    cachePort.put(accountId, today, todaySchedules, ttlSeconds = 3600)
-                    logger.debug("Cache updated for accountId=$accountId, date=$today, size=${todaySchedules.size}")
+        TransactionSynchronizationManager.registerSynchronization(object : TransactionSynchronization {
+            override fun afterCommit() {
+                try {
+                    val todaySchedules = entities
+                            .filter { dailyMap[today]?.id == it.dailySchedulesId }
+                            .map { it.toDomain() }
+
+                    if (todaySchedules.isNotEmpty()) {
+                        cachePort.put(accountId, today, todaySchedules, ttlSeconds = 3600)
+                        logger.debug("Cache updated after commit for accountId=$accountId, date=$today")
+                    }
+                } catch (ex: Exception) {
+                    logger.warn("Cache update failed (ignored) for accountId=$accountId, date=$today", ex)
                 }
-            } catch (ex: Exception) {
-                logger.warn("Cache update failed for accountId=$accountId, date=$today", ex)
             }
-        }
+        })
     }
 
     @Transactional
