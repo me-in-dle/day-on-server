@@ -18,6 +18,7 @@ import org.springframework.data.annotation.CreatedBy
 import org.springframework.data.annotation.CreatedDate
 import org.springframework.data.annotation.LastModifiedBy
 import org.springframework.data.annotation.LastModifiedDate
+import java.time.LocalDate
 import java.time.LocalDateTime
 
 @Table(
@@ -40,13 +41,13 @@ class RecommendCardJpaEntity(
     val dailyId: Long,
 
     @Column(name = "contents", columnDefinition = "TEXT", nullable = true)
-    val contents: String,
+    val contents: String?,
 
-    @Column(name = "start_time_slot", nullable = false)
-    val startTimeSlot: LocalDateTime,
+    @Column(name = "start_time_slot", nullable = true)
+    val startTimeSlot: LocalDate?,
 
-    @Column(name = "end_time_slot", nullable = false)
-    val endTimeSlot: LocalDateTime,
+    @Column(name = "end_time_slot", nullable = true)
+    val endTimeSlot: LocalDate?,
 
     @Embedded
     val recommendPlace: RecommendPlaceEmbeddedJpaModel?,
