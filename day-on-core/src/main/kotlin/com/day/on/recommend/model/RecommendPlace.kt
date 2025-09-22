@@ -6,6 +6,6 @@ data class RecommendPlace(
     val placeId: Long,
     val placeName: String,
     val placeLType: PlaceType,
-    val placeSType : String,
-    val placeSTypeKoreanName: String,
+    val placeSType : String?,
+    val placeSTypeKoreanName: String?,
 )
