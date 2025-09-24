@@ -8,10 +8,8 @@ import org.springframework.cloud.openfeign.support.SpringEncoder
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 
-
 @Configuration
 class FeignFormConfig {
-
     /**
      * 이 빈을 주입해서 SpringFormEncoder를 생성
      */

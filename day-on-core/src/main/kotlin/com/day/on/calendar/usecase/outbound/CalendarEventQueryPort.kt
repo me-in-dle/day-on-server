@@ -6,8 +6,14 @@ import java.util.*
 
 interface CalendarEventQueryPort {
     /** DB에서 날짜별 통합 일정 조회 */
-    fun findByDate(accountId: Long, date: LocalDate): List<ScheduleContent>
+    fun findByDate(
+        accountId: Long,
+        date: LocalDate,
+    ): List<ScheduleContent>
 
-    fun findMissingDays(accountId: Long, start: LocalDate, end: LocalDate): List<LocalDate>
-
+    fun findMissingDays(
+        accountId: Long,
+        start: LocalDate,
+        end: LocalDate,
+    ): List<LocalDate>
 }

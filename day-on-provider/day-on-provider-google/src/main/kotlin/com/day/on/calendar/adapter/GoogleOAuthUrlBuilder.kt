@@ -19,7 +19,7 @@ class GoogleOAuthUrlBuilder {
         redirectUri: String,
         scopeList: List<String>,
         state: String,
-        extraParams: Map<String, String> = emptyMap()
+        extraParams: Map<String, String> = emptyMap(),
     ): String {
         val sb = StringBuilder(authBaseUrl)
         sb.append("?client_id=").append(encode(clientId))
@@ -32,5 +32,6 @@ class GoogleOAuthUrlBuilder {
         }
         return sb.toString()
     }
+
     private fun encode(v: String) = URLEncoder.encode(v, StandardCharsets.UTF_8.toString())
 }

@@ -4,5 +4,5 @@ data class GoogleCalendarListEntry(
     val id: String,
     val summary: String?,
     val timeZone: String?,
-    val primary: Boolean? = false
+    val primary: Boolean? = false,
 )

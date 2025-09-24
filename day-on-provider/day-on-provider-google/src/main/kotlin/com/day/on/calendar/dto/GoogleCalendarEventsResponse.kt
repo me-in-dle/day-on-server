@@ -5,6 +5,6 @@ data class GoogleCalendarEventsResponse(
     val etag: String?,
     val summary: String?,
     val nextPageToken: String?,
-    val items: List<GoogleCalendarEvent> = emptyList()
+    val nextSyncToken: String?,
+    val items: List<GoogleCalendarEvent> = emptyList(),
 )
-

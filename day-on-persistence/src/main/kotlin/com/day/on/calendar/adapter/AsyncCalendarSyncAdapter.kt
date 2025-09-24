@@ -1,10 +1,7 @@
 package com.day.on.calendar.adapter
 
 import com.day.on.account.type.ConnectType
-import com.day.on.calendar.usecase.outbound.AsyncCalendarSyncPort
-import com.day.on.calendar.usecase.outbound.CalendarEventQueryPort
-import com.day.on.calendar.usecase.outbound.CalendarEventSyncPort
-import com.day.on.calendar.usecase.outbound.CalendarProviderClientPort
+import com.day.on.calendar.usecase.outbound.*
 import com.day.on.common.outbound.LockManager
 import org.slf4j.LoggerFactory
 import org.springframework.scheduling.annotation.Async
@@ -13,12 +10,12 @@ import java.time.LocalDate
 
 @Component
 class AsyncCalendarSyncAdapter(
-        private val providerClientPort: CalendarProviderClientPort,
-        private val eventSyncPort: CalendarEventSyncPort,
-        private val eventQueryPort: CalendarEventQueryPort,
-        private val lockManager: LockManager
+    private val providerClientPort: CalendarProviderClientPort,
+    private val eventSyncPort: CalendarEventSyncPort,
+    private val eventQueryPort: CalendarEventQueryPort,
+    private val lockManager: LockManager,
+    private val connectionPort: CalendarConnectionPort,
 ) : AsyncCalendarSyncPort {
-
     private val logger = LoggerFactory.getLogger(javaClass)
 
     /**
@@ -26,10 +23,10 @@ class AsyncCalendarSyncAdapter(
      */
     @Async("asyncTaskExecutor")
     override fun prefetchIfNeeded(
-            accountId: Long,
-            connectType: ConnectType,
-            accessToken: String,
-            currentDate: LocalDate
+        accountId: Long,
+        connectType: ConnectType,
+        accessToken: String,
+        currentDate: LocalDate,
     ) {
         try {
             val checkStart = currentDate.minusDays(4)
@@ -61,12 +58,19 @@ class AsyncCalendarSyncAdapter(
                     // 2. 없는 날 DailySchedule만 생성
                     eventSyncPort.createDailySchedulesForRange(accountId, missingStart, missingEnd)
 
-                    val events = providerClientPort.fetchEventsForDateRange(
+                    val (events, nextSyncToken) =
+                        providerClientPort.fetchEventsForDateRange(
                             connectType,
                             accessToken,
                             missingStart,
-                            missingEnd
-                    )
+                            missingEnd,
+                        )
+
+                    // syncToken 갱신
+                    if (!nextSyncToken.isNullOrBlank()) {
+                        connectionPort.updateSyncTokenByAccountId(accountId, connectType.connectTypeName, nextSyncToken)
+                        logger.info("Updated syncToken for accountId=$accountId after prefetch")
+                    }
 
                     if (events.isNotEmpty()) {
                         eventSyncPort.saveEventsForDateRange(accountId, missingStart, missingEnd, events)
@@ -78,10 +82,8 @@ class AsyncCalendarSyncAdapter(
             } catch (e: IllegalStateException) {
                 logger.debug("Prefetch already in progress for $accountId: ${e.message}")
             }
-
         } catch (e: Exception) {
             logger.error("Prefetch failed for accountId=$accountId, currentDate=$currentDate", e)
         }
     }
-
 }

@@ -8,12 +8,18 @@ import com.day.on.calendar.dto.GoogleCalendarListEntry
 import com.day.on.calendar.model.CalendarTokens
 import com.day.on.calendar.model.ScheduleContent
 import com.day.on.calendar.model.TaskStatus
+import com.day.on.calendar.type.CalendarIdType
+import com.day.on.calendar.usecase.dto.GoogleWatchRequest
+import com.day.on.calendar.usecase.dto.GoogleWatchResponse
+import com.day.on.calendar.usecase.dto.ProviderEventChange
+import com.day.on.calendar.usecase.dto.ProviderEventsResponse
 import com.day.on.calendar.usecase.outbound.CalendarProviderClientPort
 import org.springframework.stereotype.Component
 import org.springframework.util.LinkedMultiValueMap
 import java.net.URLEncoder
 import java.time.*
 import java.time.format.DateTimeFormatter
+import java.util.*
 
 /*
 * 구글 토큰 호출
@@ -21,23 +27,28 @@ import java.time.format.DateTimeFormatter
 * 이벤트 리스트를 호출하는 어댑터
 */
 @Component
-class GoogleCalendarProviderClientAdapter (
-        private val oauthClient: GoogleOauthFeign,
-        private val calendarClient: GoogleCalendarFeign,
-        private val googleProps: GoogleCalendarOauthProperties
+class GoogleCalendarProviderClientAdapter(
+    private val oauthClient: GoogleOauthFeign,
+    private val calendarClient: GoogleCalendarFeign,
+    private val googleProps: GoogleCalendarOauthProperties,
 ) : CalendarProviderClientPort {
     // TODO : 시간정책 UTC 저장 or 클라이언트 변환 규칙을 정하기
     private val rfc3339 = DateTimeFormatter.ISO_OFFSET_DATE_TIME
     private val logger = org.slf4j.LoggerFactory.getLogger(javaClass)
 
-    override fun exchangeCodeForToken(connectType: ConnectType, code: String, redirectUri: String): CalendarTokens {
-        val form = LinkedMultiValueMap<String, String>().apply {
-            add("client_id", googleProps.clientId)
-            add("client_secret", googleProps.clientSecret)
-            add("code", code)
-            add("redirect_uri", redirectUri)
-            add("grant_type", "authorization_code")
-        }
+    override fun exchangeCodeForToken(
+        connectType: ConnectType,
+        code: String,
+        redirectUri: String,
+    ): CalendarTokens {
+        val form =
+            LinkedMultiValueMap<String, String>().apply {
+                add("client_id", googleProps.clientId)
+                add("client_secret", googleProps.clientSecret)
+                add("code", code)
+                add("redirect_uri", redirectUri)
+                add("grant_type", "authorization_code")
+            }
         val resp = oauthClient.exchangeTokenForm(form)
 
         if (resp.accessToken == null) {
@@ -45,21 +56,23 @@ class GoogleCalendarProviderClientAdapter (
         }
 
         return CalendarTokens(
-                accountId = 0L, // 실제 저장 시 service에서 accountId 채움: tokenPort.save(token.copy(accountId = accountId))
-                connectType = ConnectType.GOOGLE,
-                accessToken = resp.accessToken,
-                refreshToken = resp.refreshToken ?: "",
-                createdAt = LocalDateTime.now(),
-                updatedAt = LocalDateTime.now()
+            accountId = 0L, // 실제 저장 시 service에서 accountId 채움: tokenPort.save(token.copy(accountId = accountId))
+            connectType = ConnectType.GOOGLE,
+            accessToken = resp.accessToken,
+            refreshToken =
+                resp.refreshToken
+                    ?: "",
+            createdAt = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now(),
         )
     }
 
     override fun fetchEventsForDateRange(
-            connectType: ConnectType,
-            accessToken: String,
-            startDate: LocalDate,
-            endDate: LocalDate
-    ): List<Pair<LocalDate, ScheduleContent>> {
+        connectType: ConnectType,
+        accessToken: String,
+        startDate: LocalDate,
+        endDate: LocalDate,
+    ): Pair<List<Pair<LocalDate, ScheduleContent>>, String?> {
         val authHeader = "Bearer $accessToken"
         val calListResp = calendarClient.listCalendarList(authHeader)
 
@@ -67,7 +80,7 @@ class GoogleCalendarProviderClientAdapter (
 
         if (primaryCalendar == null) {
             logger.warn("[fetchEventsForDateRange] : primaray 캘린더가 없습니다.")
-            return emptyList()
+            return emptyList<Pair<LocalDate, ScheduleContent>>() to null
         }
 
         logger.info("Syncing primary calendar: ${primaryCalendar.summary}")
@@ -76,22 +89,23 @@ class GoogleCalendarProviderClientAdapter (
             fetchEventsFromCalendar(primaryCalendar, authHeader, startDate, endDate)
         } catch (e: Exception) {
             logger.warn("Failed to fetch from primary calendar: ${primaryCalendar.summary}", e)
-            emptyList()
+            emptyList<Pair<LocalDate, ScheduleContent>>() to null
         }
     }
 
     private fun fetchEventsFromCalendar(
-            calendar: GoogleCalendarListEntry,
-            authHeader: String,
-            startDate: LocalDate,
-            endDate: LocalDate
-    ): List<Pair<LocalDate, ScheduleContent>> {
+        calendar: GoogleCalendarListEntry,
+        authHeader: String,
+        startDate: LocalDate,
+        endDate: LocalDate,
+    ): Pair<List<Pair<LocalDate, ScheduleContent>>, String?> {
         val calendarId = calendar.id
-        val zone = try {
-            ZoneId.of(calendar.timeZone ?: "UTC")  // 구글 캘린더의 타임존
-        } catch (_: Exception) {
-            ZoneOffset.UTC
-        }
+        val zone =
+            try {
+                ZoneId.of(calendar.timeZone ?: "UTC") // 구글 캘린더의 타임존
+            } catch (_: Exception) {
+                ZoneOffset.UTC
+            }
 
         // 동기화할 시간 범위 (UTC 기준으로 변환)
         val startZdt = startDate.atStartOfDay(zone).withZoneSameInstant(ZoneOffset.UTC)
@@ -99,58 +113,58 @@ class GoogleCalendarProviderClientAdapter (
 
         val results = mutableListOf<Pair<LocalDate, ScheduleContent>>()
         var pageToken: String? = null
+        var nextSyncToken: String? = null
 
         while (true) {
-            val resp = calendarClient.listEvents(
+            val resp =
+                calendarClient.listEvents(
                     calendarId = URLEncoder.encode(calendarId, "UTF-8"),
                     authorization = authHeader,
                     timeMin = startZdt.format(rfc3339),
                     timeMax = endZdt.format(rfc3339),
                     pageToken = pageToken,
-                    maxResults = 250
-            )
+                    maxResults = 250,
+                )
 
             resp.items.forEach { ge ->
                 results.add(mapGoogleEventToScheduleContent(ge, calendar.summary))
             }
 
             pageToken = resp.nextPageToken
+            nextSyncToken = resp.nextSyncToken
             if (pageToken.isNullOrBlank()) break
         }
         // 다음 페이지가 있으면 반복
 
-        return results
+        return results to nextSyncToken
     }
 
-
     private fun mapGoogleEventToScheduleContent(
-            ge: GoogleCalendarEvent,
-            calendarName: String?
+        ge: GoogleCalendarEvent,
+        calendarName: String?,
     ): Pair<LocalDate, ScheduleContent> {
-
-        logger.debug("Google Event fetched: id=${ge.id}, summary=${ge.summary}, " +
-                "start=${ge.start}, end=${ge.end}, location=${ge.location}, desc=${ge.description}")
+        logger.debug(
+            "Google Event fetched: id=${ge.id}, summary=${ge.summary}, " + "start=${ge.start}, end=${ge.end}, location=${ge.location}, desc=${ge.description}",
+        )
 
         val (startTime, endTime) = parseStartEndToLocalTimes(ge)
         val eventDate = extractEventDate(ge)
 
-        val content = ScheduleContent(
-                id = 0L,
-                dailySchedulesId = 0L, // Adapter 단계에서 채움
-                accountId = 0L,        // Adapter 단계에서 채움
-                externalEventId = ge.id,
-                relationTypes = ConnectType.GOOGLE,
-                title = ge.summary ?: "(제목 없음)",
-                location = ge.location,
-                contents = ge.description,
-                useYn = "Y",
-                tagIds = "Google",
-                startTime = startTime,
-                endTime = endTime,
-                status = determineStatus(calendarName),
-                createdAt = LocalDateTime.now(),
-                updatedAt = LocalDateTime.now()
-        )
+        val content =
+            ScheduleContent(
+                id = 0L, dailySchedulesId = 0L, // Adapter 단계에서 채움
+                accountId = 0L, // Adapter 단계에서 채움
+                externalEventId = ge.id, relationTypes = ConnectType.GOOGLE,
+                title =
+                    ge.summary
+                        ?: "(제목 없음)",
+                location = ge.location, contents = ge.description, useYn = "Y", tagIds = "Google", startTime = startTime, endTime = endTime,
+                status =
+                    determineStatus(
+                        calendarName,
+                    ),
+                createdAt = LocalDateTime.now(), updatedAt = LocalDateTime.now(),
+            )
 
         return eventDate to content
     }
@@ -172,7 +186,6 @@ class GoogleCalendarProviderClientAdapter (
             TaskStatus.PENDING
         }
     }
-
 
     /**
      * Google의 start/end를 LocalTime으로 변환
@@ -199,13 +212,74 @@ class GoogleCalendarProviderClientAdapter (
         }
 
         val startTime = toLocalTime(startRaw)
-        val endTime = if (endRaw != null && !endRaw.contains("T")) {
-            // 종일 일정의 경우 끝 시간을 23:59로 설정
-            LocalTime.of(23, 59)
-        } else {
-            toLocalTime(endRaw)
-        }
+        val endTime =
+            if (endRaw != null && !endRaw.contains("T")) {
+                // 종일 일정의 경우 끝 시간을 23:59로 설정
+                LocalTime.of(23, 59)
+            } else {
+                toLocalTime(endRaw)
+            }
 
         return Pair(startTime, endTime)
+    }
+
+    override fun fetchEventsWithSyncToken(
+        connectType: ConnectType,
+        accessToken: String,
+        syncToken: String,
+    ): ProviderEventsResponse {
+        val authHeader = "Bearer $accessToken"
+        val calListResp = calendarClient.listCalendarList(authHeader)
+        val primaryCalendar =
+            calListResp.items.firstOrNull { it.primary == true }
+                ?: return ProviderEventsResponse(emptyList(), syncToken)
+
+        var pageToken: String? = null
+        val changes = mutableListOf<ProviderEventChange>()
+        var newSyncToken: String? = null
+
+        while (true) {
+            val resp =
+                calendarClient.listEventsWithSyncToken(
+                    calendarId = URLEncoder.encode(primaryCalendar.id, "UTF-8"),
+                    authorization = authHeader,
+                    syncToken = syncToken,
+                    pageToken = pageToken,
+                )
+
+            changes +=
+                resp.items.map { ge ->
+                    ProviderEventChange(
+                        externalEventId = ge.id ?: "",
+                        status =
+                            ge.status
+                                ?: "confirmed",
+                        eventDate = extractEventDate(ge),
+                        schedule =
+                            if (ge.status == "cancelled") {
+                                null
+                            } else {
+                                mapGoogleEventToScheduleContent(ge, primaryCalendar.summary).second
+                            },
+                    )
+                }
+
+            newSyncToken = resp.nextSyncToken
+            pageToken = resp.nextPageToken
+            if (pageToken.isNullOrBlank()) break
+        }
+
+        return ProviderEventsResponse(changes, newSyncToken ?: syncToken)
+    }
+
+    override fun registerWatch(
+        connectType: ConnectType,
+        accessToken: String,
+        calendarId: CalendarIdType,
+        callbackUrl: String,
+    ): GoogleWatchResponse {
+        val request = GoogleWatchRequest(id = UUID.randomUUID().toString(), address = callbackUrl)
+
+        return calendarClient.watchCalendar(authorization = "Bearer $accessToken", calendarId = calendarId.value, body = request)
     }
 }

@@ -7,6 +7,8 @@ import org.springframework.stereotype.Repository
 
 @Repository
 interface CalendarTokenJpaRepository : JpaRepository<CalendarTokensEntity, Long> {
-    fun findByAccountIdAndConnectType(accountId: Long, connectType: ConnectType): CalendarTokensEntity?
-
+    fun findByAccountIdAndConnectType(
+        accountId: Long,
+        connectType: ConnectType,
+    ): CalendarTokensEntity?
 }

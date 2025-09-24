@@ -33,55 +33,59 @@ import java.util.*
  */
 @Service
 class CalendarQueryService(
-        private val connectionPort: CalendarConnectionPort,
-        private val cachePort: CalendarCachePort,
-        private val eventQueryPort: CalendarEventQueryPort,
-        private val tokenPort: CalendarTokenPort,
-        private val asyncSyncPort: AsyncCalendarSyncPort
+    private val connectionPort: CalendarConnectionPort,
+    private val cachePort: CalendarCachePort,
+    private val eventQueryPort: CalendarEventQueryPort,
+    private val tokenPort: CalendarTokenPort,
+    private val asyncSyncPort: AsyncCalendarSyncPort,
 ) : CalendarQueryUseCase {
-
     private val logger = LoggerFactory.getLogger(javaClass)
+
     /**
      * 1. 최초연동: 선택한 날을 기준으로 (외부api호출해서 일주일치 동기화) ex 1-7일치가져옴
      * 2. 사용자가 4일 선택: DB에 있음 → 즉시 응답
      * 3. 백그라운드 체크: 4+7=8일까지 DB 확인 → 8일 데이터 없음
      * 4. 비동기로 8-14일 동기화
      */
-    override fun getByDate(accountId: Long, date: LocalDate): CalendarQueryResult {
+    override fun getByDate(
+        accountId: Long,
+        date: LocalDate,
+    ): CalendarQueryResult {
         val connection = connectionPort.findByAccountId(accountId)
         val today = LocalDate.now()
         // TODO : 사용자가 외부 캘린더를 구별하기 위해 추후 파람으로 connectType함께 확인후 findByDate
         // 2) 당일 여부 조회
-        val schedules = try {
-            if (date == today) {
-                // 오늘이면 캐시 우선
-                cachePort.get(accountId, date)
+        val schedules =
+            try {
+                if (date == today) {
+                    // 오늘이면 캐시 우선
+                    cachePort.get(accountId, date)
                         ?: eventQueryPort.findByDate(accountId, date).also {
                             if (it.isNotEmpty()) {
                                 cachePort.put(accountId, date, it, ttlSeconds = 3600)
                             }
                         }
-            } else {
-                // 다른 날짜는 DB 조회
-                eventQueryPort.findByDate(accountId, date)
+                } else {
+                    // 다른 날짜는 DB 조회
+                    eventQueryPort.findByDate(accountId, date)
+                }
+            } catch (e: Exception) {
+                logger.error("Failed to fetch schedules for accountId=$accountId, date=$date", e)
+                emptyList()
             }
-        } catch (e: Exception) {
-            logger.error("Failed to fetch schedules for accountId=$accountId, date=$date", e)
-            emptyList()
-        }
 
         // 외부 연동되어 있고, daily schedules에 범위 체크 후 백그라운드 실시간 동기화
         if (connection?.isActive == true) {
-            val token = tokenPort.findByAccountIdAndConnectType(accountId, connection.provider.connectTypeName)
+            val token = tokenPort.findByAccountIdAndConnectType(accountId, connection.provider)
 
             if (token != null) {
                 try {
                     // 현재 날짜 기준 앞뒤로 +- 4일 체크 및 Prefetch
                     asyncSyncPort.prefetchIfNeeded(
-                            accountId,
-                            connection.provider,
-                            token.accessToken,
-                            date
+                        accountId,
+                        connection.provider,
+                        token.accessToken,
+                        date,
                     )
                 } catch (e: Exception) {
                     logger.warn("Prefetch scheduling failed", e)
@@ -95,8 +99,5 @@ class CalendarQueryService(
         } else {
             CalendarQueryResult.NotConnected(schedules = schedules)
         }
-
     }
-
-
 }

@@ -8,5 +8,5 @@ data class OAuthStatePayload(
     val connectType: ConnectType?,
     val issuedAtMillis: Long,
     val expiresInSeconds: Long = 300L, // 기본 5분
-    val nonce: String? = java.util.UUID.randomUUID().toString()
+    val nonce: String? = java.util.UUID.randomUUID().toString(),
 )
