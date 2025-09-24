@@ -36,7 +36,7 @@ class CalendarOAuthService(
     private lateinit var defaultClientRedirect: String
 
     // TODO : 경로 추후 수정 gate way + yml
-    @Value("\${calendar.webhook.url:https://e0b54438c8d9.ngrok-free.app/api/v1/calendar/webhook}")
+    @Value("\${calendar.webhook.url:https://1e478f464491.ngrok-free.app/api/v1/calendar/webhook}")
     private lateinit var webhookUrl: String
 
     /**

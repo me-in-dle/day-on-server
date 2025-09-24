@@ -11,7 +11,7 @@ import java.time.ZoneOffset
 data class GoogleWatchResponse(
         @JsonProperty("id")
         val id: String,
-        @JsonAlias("resource_id")
+        @JsonProperty("resourceId")
         val resourceId: String?,
         @JsonProperty("expiration")
         val expiration: String?,
