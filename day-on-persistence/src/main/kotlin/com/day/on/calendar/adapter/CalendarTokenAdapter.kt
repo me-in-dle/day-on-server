@@ -21,7 +21,6 @@ class CalendarTokenAdapter(
     /**
      * save는 upsert 동작: 동일 accountId+connectType이 존재하면 업데이트, 없으면 insert
      */
-    @Transactional
     override fun save(token: CalendarTokens) {
         val now = LocalDateTime.now()
         val existing = jpaRepository.findByAccountIdAndConnectType(token.accountId, token.connectType)

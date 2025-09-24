@@ -1,8 +1,6 @@
 package com.day.on.calendar.usecase.outbound
 
-import com.day.on.account.type.ConnectType
 import com.day.on.calendar.model.CalendarConnection
-import com.day.on.calendar.model.WatchChannel
 import java.time.LocalDateTime
 
 interface CalendarConnectionPort {
@@ -33,9 +31,4 @@ interface CalendarConnectionPort {
         timestamp: LocalDateTime,
     )
 
-    fun updateChannelAndResource(
-        accountId: Long,
-        provider: ConnectType,
-        watch: WatchChannel,
-    )
 }

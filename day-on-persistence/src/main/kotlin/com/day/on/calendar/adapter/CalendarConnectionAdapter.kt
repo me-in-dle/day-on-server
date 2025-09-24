@@ -6,6 +6,7 @@ import com.day.on.calendar.model.CalendarConnection
 import com.day.on.calendar.model.WatchChannel
 import com.day.on.calendar.repository.CalendarConnectionJpaRepository
 import com.day.on.calendar.usecase.outbound.CalendarConnectionPort
+import org.springframework.data.jpa.repository.Modifying
 import org.springframework.stereotype.Repository
 import org.springframework.transaction.annotation.Transactional
 import java.time.LocalDateTime
@@ -27,7 +28,7 @@ class CalendarConnectionAdapter(private val jpaRepository: CalendarConnectionJpa
         return jpaRepository.findByChannelIdAndResourceId(channelId, resourceId)?.toDomain()
     }
 
-    @Transactional
+
     override fun updateSyncTokenByAccountId(
         accountId: Long,
         connectType: String,
@@ -47,7 +48,7 @@ class CalendarConnectionAdapter(private val jpaRepository: CalendarConnectionJpa
         }
     }
 
-    @Transactional
+
     override fun updateSyncToken(
         connectionId: Long,
         syncToken: String,
@@ -59,7 +60,6 @@ class CalendarConnectionAdapter(private val jpaRepository: CalendarConnectionJpa
         )
     }
 
-    @Transactional
     override fun updateLastSynced(
         connectionId: Long,
         timestamp: LocalDateTime,
@@ -78,20 +78,4 @@ class CalendarConnectionAdapter(private val jpaRepository: CalendarConnectionJpa
         return saved.toDomain()
     }
 
-    override fun updateChannelAndResource(
-        accountId: Long,
-        provider: ConnectType,
-        watch: WatchChannel,
-    ) {
-        val connection =
-            jpaRepository.findByAccountIdAndProvider(accountId, provider)
-                ?: throw IllegalStateException("No connection found for accountId=$accountId, provider=$provider")
-
-        connection.channelId = watch.channelId
-        connection.resourceId = watch.resourceId
-        connection.expiration = watch.expiration
-        connection.updatedAt = LocalDateTime.now()
-
-        jpaRepository.save(connection)
-    }
 }

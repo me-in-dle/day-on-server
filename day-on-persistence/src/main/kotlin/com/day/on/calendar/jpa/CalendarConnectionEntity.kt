@@ -27,8 +27,8 @@ class CalendarConnectionEntity(
     var resourceId: String?,
     @Column(name = "channel_id", columnDefinition = "VARCHAR(255)")
     var channelId: String,
-    @Column(name = "sync_token", columnDefinition = "VARCHAR(255)")
-    val syncToken: String,
+    @Column(name = "sync_token",  columnDefinition = "VARCHAR(255)")
+    val syncToken: String?,
     @Column(name = "expiration")
     var expiration: LocalDateTime?,
     @Column(name = "last_synced")

@@ -18,4 +18,5 @@ class FeignFormConfig {
         // SpringFormEncoder를 SpringEncoder로 래핑
         return SpringFormEncoder(SpringEncoder(objectFactory))
     }
+
 }

@@ -27,7 +27,7 @@ interface CalendarProviderClientPort {
     fun fetchEventsWithSyncToken(
         connectType: ConnectType,
         accessToken: String,
-        syncToken: String,
+        syncToken: String?,
     ): ProviderEventsResponse
 
     fun registerWatch(

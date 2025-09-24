@@ -33,7 +33,6 @@ class GoogleCalendarProviderClientAdapter(
     private val googleProps: GoogleCalendarOauthProperties,
 ) : CalendarProviderClientPort {
     // TODO : 시간정책 UTC 저장 or 클라이언트 변환 규칙을 정하기
-    private val rfc3339 = DateTimeFormatter.ISO_OFFSET_DATE_TIME
     private val logger = org.slf4j.LoggerFactory.getLogger(javaClass)
 
     override fun exchangeCodeForToken(
@@ -82,7 +81,7 @@ class GoogleCalendarProviderClientAdapter(
             logger.warn("[fetchEventsForDateRange] : primaray 캘린더가 없습니다.")
             return emptyList<Pair<LocalDate, ScheduleContent>>() to null
         }
-
+        logger.info("엑세스토큰 !!!!!!! ${accessToken}")
         logger.info("Syncing primary calendar: ${primaryCalendar.summary}")
 
         return try {
@@ -100,17 +99,6 @@ class GoogleCalendarProviderClientAdapter(
         endDate: LocalDate,
     ): Pair<List<Pair<LocalDate, ScheduleContent>>, String?> {
         val calendarId = calendar.id
-        val zone =
-            try {
-                ZoneId.of(calendar.timeZone ?: "UTC") // 구글 캘린더의 타임존
-            } catch (_: Exception) {
-                ZoneOffset.UTC
-            }
-
-        // 동기화할 시간 범위 (UTC 기준으로 변환)
-        val startZdt = startDate.atStartOfDay(zone).withZoneSameInstant(ZoneOffset.UTC)
-        val endZdt = endDate.atTime(23, 59, 59).atZone(zone).withZoneSameInstant(ZoneOffset.UTC)
-
         val results = mutableListOf<Pair<LocalDate, ScheduleContent>>()
         var pageToken: String? = null
         var nextSyncToken: String? = null
@@ -120,14 +108,22 @@ class GoogleCalendarProviderClientAdapter(
                 calendarClient.listEvents(
                     calendarId = URLEncoder.encode(calendarId, "UTF-8"),
                     authorization = authHeader,
-                    timeMin = startZdt.format(rfc3339),
-                    timeMax = endZdt.format(rfc3339),
+                    singleEvents = true,
                     pageToken = pageToken,
-                    maxResults = 250,
+                    maxResults = 2500,
+                    showDeleted = true
                 )
+            logger.info("Response nextSyncToken: ${resp.nextSyncToken}")
+            logger.info("Response nextPageToken: ${resp.nextPageToken}")
 
             resp.items.forEach { ge ->
-                results.add(mapGoogleEventToScheduleContent(ge, calendar.summary))
+                if (ge.status == "cancelled") return@forEach
+                val eventDate = extractEventDate(ge)
+                // 기간 필터링 후 저장
+                if (!eventDate.isBefore(startDate) && !eventDate.isAfter(endDate)) {
+                    val content = toScheduleContent(ge, calendar.summary)
+                    results.add(eventDate to content)
+                }
             }
 
             pageToken = resp.nextPageToken
@@ -135,7 +131,10 @@ class GoogleCalendarProviderClientAdapter(
             if (pageToken.isNullOrBlank()) break
         }
         // 다음 페이지가 있으면 반복
-
+        logger.info("Final nextSyncToken: $nextSyncToken")
+        if (nextSyncToken == null) {
+            logger.warn("No syncToken returned from Google (calendarId=${calendar.id})")
+        }
         return results to nextSyncToken
     }
 
@@ -146,28 +145,38 @@ class GoogleCalendarProviderClientAdapter(
         logger.debug(
             "Google Event fetched: id=${ge.id}, summary=${ge.summary}, " + "start=${ge.start}, end=${ge.end}, location=${ge.location}, desc=${ge.description}",
         )
-
-        val (startTime, endTime) = parseStartEndToLocalTimes(ge)
         val eventDate = extractEventDate(ge)
-
-        val content =
-            ScheduleContent(
-                id = 0L, dailySchedulesId = 0L, // Adapter 단계에서 채움
-                accountId = 0L, // Adapter 단계에서 채움
-                externalEventId = ge.id, relationTypes = ConnectType.GOOGLE,
-                title =
-                    ge.summary
-                        ?: "(제목 없음)",
-                location = ge.location, contents = ge.description, useYn = "Y", tagIds = "Google", startTime = startTime, endTime = endTime,
-                status =
-                    determineStatus(
-                        calendarName,
-                    ),
-                createdAt = LocalDateTime.now(), updatedAt = LocalDateTime.now(),
-            )
+        val content = toScheduleContent(ge, calendarName)
 
         return eventDate to content
     }
+
+    private fun toScheduleContent(
+        ge: GoogleCalendarEvent,
+        calendarName: String?,
+    ): ScheduleContent {
+        val (startTime, endTime) = parseStartEndToLocalTimes(ge)
+        val now = LocalDateTime.now()
+
+        return ScheduleContent(
+            id = 0L,
+            dailySchedulesId = 0L,
+            accountId = 0L,
+            externalEventId = ge.id ?: UUID.randomUUID().toString(),
+            relationTypes = ConnectType.GOOGLE,
+            title = ge.summary.toString(),
+            location = ge.location,
+            contents = ge.description,
+            useYn = "Y",
+            tagIds = "Google",
+            startTime = startTime,
+            endTime = endTime,
+            status = determineStatus(calendarName),
+            createdAt = now,
+            updatedAt = now,
+        )
+    }
+
 
     /** 이벤트 날짜 추출 */
     private fun extractEventDate(ge: GoogleCalendarEvent): LocalDate {
@@ -226,8 +235,13 @@ class GoogleCalendarProviderClientAdapter(
     override fun fetchEventsWithSyncToken(
         connectType: ConnectType,
         accessToken: String,
-        syncToken: String,
+        syncToken: String?,
     ): ProviderEventsResponse {
+        if (syncToken.isNullOrBlank()) {
+            logger.warn("syncToken is null or empty - cannot perform incremental sync")
+            return ProviderEventsResponse(emptyList(), null)
+        }
+
         val authHeader = "Bearer $accessToken"
         val calListResp = calendarClient.listCalendarList(authHeader)
         val primaryCalendar =
@@ -238,35 +252,40 @@ class GoogleCalendarProviderClientAdapter(
         val changes = mutableListOf<ProviderEventChange>()
         var newSyncToken: String? = null
 
-        while (true) {
-            val resp =
-                calendarClient.listEventsWithSyncToken(
-                    calendarId = URLEncoder.encode(primaryCalendar.id, "UTF-8"),
-                    authorization = authHeader,
-                    syncToken = syncToken,
-                    pageToken = pageToken,
-                )
+        // TODO : 410 처리 로직
+        try {
+            while (true) {
+                val resp =
+                    calendarClient.listEventsWithSyncToken(
+                        calendarId = URLEncoder.encode(primaryCalendar.id, "UTF-8"),
+                        authorization = authHeader,
+                        syncToken = syncToken,
+                        pageToken = pageToken,
+                        maxResults = 2500,
+                        singleEvents = true,
+                        showDeleted = true
+                    )
 
-            changes +=
-                resp.items.map { ge ->
-                    ProviderEventChange(
-                        externalEventId = ge.id ?: "",
-                        status =
-                            ge.status
-                                ?: "confirmed",
-                        eventDate = extractEventDate(ge),
-                        schedule =
-                            if (ge.status == "cancelled") {
-                                null
-                            } else {
-                                mapGoogleEventToScheduleContent(ge, primaryCalendar.summary).second
-                            },
+                resp.items.forEach { ge ->
+                    val (eventDate, content) = mapGoogleEventToScheduleContent(ge, primaryCalendar.summary)
+                    changes += ProviderEventChange(
+                        externalEventId = ge.id ?: UUID.randomUUID().toString(),
+                        status = ge.status ?: "confirmed",
+                        eventDate = eventDate,
+                        schedule = if (ge.status == "cancelled") null else content,
                     )
                 }
 
-            newSyncToken = resp.nextSyncToken
-            pageToken = resp.nextPageToken
-            if (pageToken.isNullOrBlank()) break
+                newSyncToken = resp.nextSyncToken
+                pageToken = resp.nextPageToken
+                if (pageToken.isNullOrBlank()) break
+            }
+        } catch (ex: feign.FeignException) {
+            if (ex.status() == 410) {
+                logger.warn("SyncToKen 만료 됨  syncToken=$syncToken")
+                // TODO : 서비스레벨에서 다시 full sync 트리거하도록 처리
+            }
+            throw ex
         }
 
         return ProviderEventsResponse(changes, newSyncToken ?: syncToken)

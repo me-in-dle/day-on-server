@@ -16,15 +16,23 @@ class CalendarWebhookController(
 
     @PostMapping("/webhook")
     fun receiveWebhook(
-            @RequestHeader("X-Goog-Channel-ID") channelId: String,
-            @RequestHeader("X-Goog-Resource-ID") resourceId: String,
+            @RequestHeader("x-goog-channel-id") channelId: String,
+            @RequestHeader("x-goog-resource-id") resourceId: String,
+            @RequestHeader("x-goog-resource-state") resourceState: String,
             request: HttpServletRequest,
     ): ResponseEntity<Void> {
-        logger.info("[Webhook] Received: method=${request.method}, uri=${request.requestURI}")
-        logger.info("[Webhook] Headers: ${
-            Collections.list(request.headerNames)
-                .associateWith { request.getHeader(it) }}")
-        webhookUseCase.handleWebhookNotification(channelId, resourceId)
+        logger.info("[Webhook] Received headers: channelId=$channelId, resourceId=$resourceId, state=$resourceState")
+
+        if (channelId != null && resourceId != null && resourceState == "exists") {
+            try {
+                webhookUseCase.handleWebhookNotification(channelId, resourceId)
+                logger.info("[Webhook] Processing completed")
+            } catch (e: Exception) {
+                logger.error("[Webhook] Processing failed", e)
+            }
+        } else {
+            logger.info("[Webhook] Skipping - missing headers or sync state")
+        }
         return ResponseEntity.ok().build() // Google에 ACK
     }
 }
