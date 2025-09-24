@@ -10,26 +10,35 @@ import java.time.LocalDate
 
 @Component
 class CalendarCacheAdapter(
-        private val redisCacheAdapter: CachePort,
-        private val objectMapper: ObjectMapper
+    private val redisCacheAdapter: CachePort,
+    private val objectMapper: ObjectMapper,
 ) : CalendarCachePort {
-    override fun get(accountId: Long, date: LocalDate): List<ScheduleContent>? {
+    override fun get(
+        accountId: Long,
+        date: LocalDate,
+    ): List<ScheduleContent>? {
         val key = "calendar:$accountId:$date"
         val raw: String = redisCacheAdapter.get(key, String::class.java) ?: return null
 
         return try {
-            val json = if (raw.startsWith("\"") && raw.endsWith("\"")) {
-                objectMapper.readValue(raw, String::class.java)
-            } else {
-                raw
-            }
+            val json =
+                if (raw.startsWith("\"") && raw.endsWith("\"")) {
+                    objectMapper.readValue(raw, String::class.java)
+                } else {
+                    raw
+                }
             objectMapper.readValue(json, object : TypeReference<List<ScheduleContent>>() {})
         } catch (ex: Exception) {
             null // 역직렬화 실패 시
         }
     }
 
-    override fun put(accountId: Long, date: LocalDate, schedules: List<ScheduleContent>, ttlSeconds: Long) {
+    override fun put(
+        accountId: Long,
+        date: LocalDate,
+        schedules: List<ScheduleContent>,
+        ttlSeconds: Long,
+    ) {
         val key = "calendar:$accountId:$date"
 
         try {
@@ -41,5 +50,11 @@ class CalendarCacheAdapter(
         }
     }
 
-
+    override fun evict(
+        accountId: Long,
+        date: LocalDate,
+    ) {
+        val key = "calendar:$accountId:$date"
+        redisCacheAdapter.delete(key)
+    }
 }

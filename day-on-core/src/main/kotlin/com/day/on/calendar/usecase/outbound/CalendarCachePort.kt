@@ -5,6 +5,20 @@ import java.time.LocalDate
 import java.util.*
 
 interface CalendarCachePort {
-    fun get(accountId: Long, date: LocalDate): List<ScheduleContent>?
-    fun put(accountId: Long, date: LocalDate, schedules: List<ScheduleContent>, ttlSeconds: Long)
+    fun get(
+        accountId: Long,
+        date: LocalDate,
+    ): List<ScheduleContent>?
+
+    fun put(
+        accountId: Long,
+        date: LocalDate,
+        schedules: List<ScheduleContent>,
+        ttlSeconds: Long,
+    )
+
+    fun evict(
+        accountId: Long,
+        date: LocalDate,
+    )
 }

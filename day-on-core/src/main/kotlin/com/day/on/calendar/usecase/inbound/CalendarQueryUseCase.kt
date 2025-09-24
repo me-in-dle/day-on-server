@@ -5,5 +5,8 @@ import java.time.LocalDate
 import java.util.*
 
 interface CalendarQueryUseCase {
-    fun getByDate(accountId: Long, date: LocalDate): CalendarQueryResult
+    fun getByDate(
+        accountId: Long,
+        date: LocalDate,
+    ): CalendarQueryResult
 }

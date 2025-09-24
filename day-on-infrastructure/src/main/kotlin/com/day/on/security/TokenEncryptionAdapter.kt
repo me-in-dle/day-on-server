@@ -11,10 +11,8 @@ import javax.crypto.Cipher
 import javax.crypto.spec.GCMParameterSpec
 import javax.crypto.spec.SecretKeySpec
 
-
 @Component
 class TokenEncryptionAdapter : TokenEncryptionPort {
-
     @Value("\${spring.calendar.token.encryption.key}")
     private lateinit var encryptionKey: String
 
@@ -31,7 +29,7 @@ class TokenEncryptionAdapter : TokenEncryptionPort {
         val keyBytes = encryptionKey.toByteArray(Charsets.UTF_8)
         if (keyBytes.size != REQUIRED_KEY_LENGTH) {
             throw IllegalArgumentException(
-                    "Encryption key must be exactly $REQUIRED_KEY_LENGTH bytes. Current: ${keyBytes.size} bytes"
+                "Encryption key must be exactly $REQUIRED_KEY_LENGTH bytes. Current: ${keyBytes.size} bytes",
             )
         }
     }
@@ -39,12 +37,13 @@ class TokenEncryptionAdapter : TokenEncryptionPort {
     private fun getValidatedKey(): SecretKeySpec {
         val keyBytes = encryptionKey.toByteArray(Charsets.UTF_8)
         // 해시를 사용해 32바이트로 만들기
-        val normalizedKey = if (keyBytes.size != REQUIRED_KEY_LENGTH) {
-            val digest = MessageDigest.getInstance("SHA-256")
-            digest.digest(keyBytes)
-        } else {
-            keyBytes
-        }
+        val normalizedKey =
+            if (keyBytes.size != REQUIRED_KEY_LENGTH) {
+                val digest = MessageDigest.getInstance("SHA-256")
+                digest.digest(keyBytes)
+            } else {
+                keyBytes
+            }
         return SecretKeySpec(normalizedKey, ALGORITHM)
     }
 

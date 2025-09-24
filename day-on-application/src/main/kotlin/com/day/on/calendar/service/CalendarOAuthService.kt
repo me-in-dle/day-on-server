@@ -2,59 +2,70 @@ package com.day.on.calendar.service
 
 import com.day.on.account.type.ConnectType
 import com.day.on.calendar.model.CalendarConnection
+import com.day.on.calendar.model.CalendarTokens
+import com.day.on.calendar.model.ScheduleContent
+import com.day.on.calendar.model.WatchChannel
+import com.day.on.calendar.type.CalendarIdType
 import com.day.on.calendar.usecase.dto.OAuthStatePayload
 import com.day.on.calendar.usecase.inbound.CalendarOAuthUseCase
-
 import com.day.on.calendar.usecase.outbound.*
-import com.day.on.common.outbound.LockManager
-import com.fasterxml.jackson.databind.ObjectMapper
 import org.slf4j.LoggerFactory
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
+import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.YearMonth
+import java.time.ZoneOffset
 import java.util.*
 
 @Service
 class CalendarOAuthService(
-        private val statePort: CalendarOAuthStatePort,
-        private val calendarOAuthUrlPort: CalendarOAuthUrlPort,
-        private val providerClient: CalendarProviderClientPort,
-        private val tokenPort: CalendarTokenPort,
-        private val eventSyncPort: CalendarEventSyncPort,
-        private val connectionPort: CalendarConnectionPort,
-        private val lockManager: LockManager,
-        private val objectMapper: ObjectMapper
-
+    private val statePort: CalendarOAuthStatePort,
+    private val calendarOAuthUrlPort: CalendarOAuthUrlPort,
+    private val providerClient: CalendarProviderClientPort,
+    private val tokenPort: CalendarTokenPort,
+    private val eventSyncPort: CalendarEventSyncPort,
+    private val connectionPort: CalendarConnectionPort,
 ) : CalendarOAuthUseCase {
-
     private val logger = LoggerFactory.getLogger(javaClass)
 
     @Value("\${calendar.oauth.client-redirect-url:http://localhost:5173/calendar}")
     private lateinit var defaultClientRedirect: String
+
+    // TODO : 경로 추후 수정 gate way + yml
+    @Value("\${calendar.webhook.url:https://1e478f464491.ngrok-free.app/api/v1/calendar/webhook}")
+    private lateinit var webhookUrl: String
+
     /**
      * 클라이언트에게 전달할 OAuth 인증 URL을 생성.
      * TODO : forwardUrl: 인증 끝난 뒤 사용자에게 다시 보낼 client URL
      */
-    override fun generateCalendarOAuthUrl(accountId: Long, provider: String, forwardUrl: String?): String {
+    override fun generateCalendarOAuthUrl(
+        accountId: Long,
+        provider: String,
+        forwardUrl: String?,
+    ): String {
         // 1) connectType 매핑(optional) — state에 기록하면 callback에서 검증 가능
-        val connectType = try {
-            ConnectType.matchConnectType(provider)
-        } catch (ex: Exception) {
-            null // 또는 예외 던지기
-        }
+        val connectType =
+            try {
+                ConnectType.matchConnectType(provider)
+            } catch (ex: Exception) {
+                // TODO : 예외 던지기
+                null
+            }
 
         // 2) state payload 생성
-        val payload = OAuthStatePayload(
+        val payload =
+            OAuthStatePayload(
                 accountId = accountId,
                 forwardUrl = forwardUrl,
                 connectType = connectType,
                 issuedAtMillis = System.currentTimeMillis(),
-                expiresInSeconds = 300L
-        )
+                expiresInSeconds = 300L,
+            )
 
         // 3) state 인코딩
         val state = statePort.encode(payload)
@@ -73,77 +84,101 @@ class CalendarOAuthService(
      *  - 클라이언트로 리다이렉트할 URL 반환
      */
     @Transactional
-    override fun handleCallbackAndGetClientRedirect(connectType: String, code: String, state: String?): String {
-
-        // 1) state 파싱 (accountId, forwardUrl, nonce 등)
+    override fun handleCallbackAndGetClientRedirect(
+        connectType: String,
+        code: String,
+        state: String?,
+    ): String {
+        // TODO : 이미 연동을 한 계정은 예외처리 (test때는 일단 패스)
         val payload = statePort.decode(state)
-                ?: throw IllegalArgumentException("Invalid or missing OAuth state")
-        if (payload.connectType != null && payload.connectType != ConnectType.matchConnectType(connectType)) {
+            ?: throw IllegalArgumentException("Invalid or missing OAuth state")
+
+        if (payload.connectType != null &&
+            payload.connectType != ConnectType.matchConnectType(connectType)
+        ) {
             throw IllegalArgumentException("Provider mismatch")
         }
 
-        val accountId = payload.accountId ?: throw IllegalArgumentException("State missing accountId")
+        val accountId = payload.accountId
+            ?: throw IllegalArgumentException("State missing accountId")
         val ct = ConnectType.matchConnectType(connectType)
 
-        // 2) provider에 등록된 서버 redirectUri 획득
+        // 1. 외부 API 호출
         val redirectUriUsed = statePort.redirectUriForProvider(connectType)
 
-        // 3) code -> token
         val token = providerClient.exchangeCodeForToken(ct, code, redirectUriUsed)
 
-        // 4) 토큰 저장
-        tokenPort.save(token.copy(accountId = accountId))
+        val today = LocalDate.now()
+        val weekEnd = today.plusDays(7)
+        logger.info("Starting week sync for accountId=$accountId ($today ~ $weekEnd)")
 
-        // 5) 이번 달 이벤트 전체 동기화 시도
-        try {
-            val now = LocalDateTime.now()
-            val ym = YearMonth.of(now.year, now.monthValue)
-            val events = providerClient.fetchEventsForMonth(ct, token.accessToken, ym.year, ym.monthValue)
-            logger.info("Fetched events for ${ym}: size=${events.size}, events=$events")
-            // TODO : 분산락
-            try {
-                eventSyncPort.saveMonthly(accountId, ym.year, ym.monthValue, events)
-
-                logger.info("Fetched events for $ym : size=${events.size}")
-                try {
-                    logger.debug("Fetched events JSON: ${objectMapper.writeValueAsString(events)}")
-                } catch (ex: Exception) {
-                    logger.warn("Failed to log events as JSON", ex)
-                }
-            } catch (ex: Exception) {
-                // DB 저장 실패면 기록하고 정책에 따라 처리하되, 캐시 실패 때문에 전체 롤백되는 건 막자!!!!!
-                logger.warn("initial sync failed", ex)
-            }
-
+        val (weekEvents, syncToken) = try {
+            // TODO : syncToken null 문제 해결 하기
+            providerClient.fetchEventsForDateRange(ct, token.accessToken, today, weekEnd)
         } catch (ex: Exception) {
-            // 초기 동기화 실패: 정책에 따라 롤백
-            // TODO : 정책 따라서 수정하기
-            logger.warn("initial sync failed", ex)
+            logger.error("Week sync failed for accountId=$accountId", ex)
+            throw IllegalStateException("Initial calendar sync failed. Please try again.", ex)
         }
 
-        // 6) CalendarConnection 저장 및 업데이트 (isActive = true)
-        val connection = CalendarConnection(
-                id = 0L,
-                accountId = accountId,
-                provider = ct,
-                isActive = true,
-                lastSynced = LocalDateTime.now(),
-                createdAt = LocalDateTime.now(),
-                updatedAt = LocalDateTime.now()
-        )
-        // 분산락 or account id, connect type 유니크 upsert
-        connectionPort.save(connection)
+        // watch 등록
+        val resp = providerClient.registerWatch(ct, token.accessToken, CalendarIdType.PRIMARY, webhookUrl)
+        val watchChannel =
+            WatchChannel(
+                channelId = resp.id,
+                resourceId = resp.resourceId?: "",
+                expiration = resp.expiration?.toLongOrNull()?.let {
+                    Instant.ofEpochMilli(it).atZone(ZoneOffset.UTC).toLocalDateTime()
+                }
+            )
+        logger.info("[Watch] 등록 for accountId=$accountId, channelId=${resp.id}, resourceId=${resp.resourceId}")
 
-        // 7) 클라이언트로 리다이렉트할 URL 결정 (state.forwardUrl 우선)
+        // 2. DB 저장 (트랜잭션 안)
+        saveIntegrationResults(accountId, ct, token, weekEvents, syncToken, watchChannel)
+
+        // 3. redirect
         val forward = payload.forwardUrl ?: defaultClientRedirect
         return appendQueryParam(forward, "connected", "true")
     }
 
-    private fun appendQueryParam(url: String, key: String, value: String): String {
+    fun saveIntegrationResults(accountId: Long, ct: ConnectType, token: CalendarTokens, weekEvents: List<Pair<LocalDate, ScheduleContent>>, syncToken: String?, watchChannel: WatchChannel) {
+        // 토큰 저장
+        tokenPort.save(token.copy(accountId = accountId))
+
+        // 이벤트 저장
+        if (weekEvents.isNotEmpty()) {
+            val today = LocalDate.now()
+            val weekEnd = today.plusDays(7)
+            eventSyncPort.createDailySchedulesForRange(accountId, today, weekEnd)
+            eventSyncPort.saveEventsForDateRange(accountId, today, weekEnd, weekEvents)
+        }
+
+        // 연결 저장
+        val connection = CalendarConnection(
+            id = 0L,
+            accountId = accountId,
+            resourceId = watchChannel.resourceId,
+            channelId = watchChannel.channelId,
+            syncToken = syncToken,
+            expiration = watchChannel.expiration,
+            provider = ct,
+            isActive = true,
+            lastSynced = LocalDateTime.now(),
+            createdAt = LocalDateTime.now(),
+            updatedAt = LocalDateTime.now(),
+        )
+        connectionPort.save(connection)
+
+        logger.info("[외부 초기화 연동 성공] saved: accountId=$accountId, provider=$ct")
+    }
+
+    private fun appendQueryParam(
+        url: String,
+        key: String,
+        value: String,
+    ): String {
         val sep = if (url.contains("?")) "&" else "?"
         return "$url$sep${URLEncoder.encode(key, StandardCharsets.UTF_8)}=${URLEncoder.encode(value, StandardCharsets.UTF_8)}"
     }
 
     // 확장: CalendarTokenResponse -> CalendarToken 변환 헬퍼 (token.toCalendarToken())
-
 }

@@ -18,5 +18,5 @@ data class CalendarEventCache(
     val status: String = "CONFIRMED",
     val externalCreated: String,
     val externalUpdated: String,
-    val cachedAt: LocalDateTime
+    val cachedAt: LocalDateTime,
 )

@@ -2,7 +2,7 @@ package com.day.on.calendar.adapter
 
 import org.springframework.boot.context.properties.ConfigurationProperties
 
-@ConfigurationProperties(prefix = "google.oauth2.calendar")
+@ConfigurationProperties(prefix = "google.calendar")
 data class GoogleCalendarOauthProperties(
     val clientId: String,
     val clientSecret: String,

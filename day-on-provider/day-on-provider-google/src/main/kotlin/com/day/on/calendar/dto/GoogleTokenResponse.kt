@@ -8,5 +8,5 @@ data class GoogleTokenResponse(
     @JsonProperty("refresh_token") val refreshToken: String?,
     @JsonProperty("scope") val scope: String?,
     @JsonProperty("token_type") val tokenType: String?,
-    @JsonProperty("id_token") val idToken: String?
+    @JsonProperty("id_token") val idToken: String?,
 )
