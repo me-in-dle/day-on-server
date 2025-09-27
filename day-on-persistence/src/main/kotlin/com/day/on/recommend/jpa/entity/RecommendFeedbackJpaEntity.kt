@@ -57,7 +57,7 @@ class RecommendFeedbackJpaEntity(
     @Column(name = "last_matched_count", nullable = true)
     val lastMatchedTime: LocalDateTime?,
 
-    @Column(name = "feedback_actions", columnDefinition = "VARCHAR(255)", nullable = false)
+    @Column(name = "feedback_actions", columnDefinition = "VARCHAR(500)", nullable = false)
     @Convert(converter = ListFeedbackActionToStringConverter::class)
     val feedbackActions: List<FeedbackAction>,
 

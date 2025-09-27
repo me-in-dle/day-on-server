@@ -1,7 +1,7 @@
 package com.day.on.recommend.jpa.entity.embedded
 
-import com.day.on.recommend.model.RecommendPlace
 import com.day.on.place.type.PlaceType
+import com.day.on.recommend.model.RecommendPlace
 import jakarta.persistence.Column
 import jakarta.persistence.Embeddable
 import jakarta.persistence.EnumType
@@ -9,17 +9,17 @@ import jakarta.persistence.Enumerated
 
 @Embeddable
 class RecommendPlaceEmbeddedJpaModel(
-    @Column(name = "place_id", columnDefinition = "VARCHAR(100)", nullable = true)
+    @Column(name = "place_id", columnDefinition = "VARCHAR(100)", nullable = false)
     val placeId: Long,
-    @Column(name = "place_name", columnDefinition = "VARCHAR(100)", nullable = true)
+    @Column(name = "place_name", columnDefinition = "VARCHAR(100)", nullable = false)
     val placeName: String,
     @Enumerated(value = EnumType.STRING)
-    @Column(name = "place_l_type", columnDefinition = "VARCHAR(255)", nullable = true)
+    @Column(name = "place_l_type", columnDefinition = "VARCHAR(255)", nullable = false)
     val placeLType: PlaceType,
     @Column(name = "place_s_type", columnDefinition = "VARCHAR(255)", nullable = true)
-    val placeSType: String,
+    val placeSType: String?,
     @Column(name = "place_s_type_korean_name", columnDefinition = "VARCHAR(255)", nullable = true)
-    val placeSTypeKoreanName: String,
+    val placeSTypeKoreanName: String?,
 ) {
     fun toDomainModel() = RecommendPlace(
         placeId = placeId,

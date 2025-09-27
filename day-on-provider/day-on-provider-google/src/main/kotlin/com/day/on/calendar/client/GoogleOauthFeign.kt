@@ -10,5 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody
 @FeignClient(name = "google-oauth", url = "https://oauth2.googleapis.com", configuration = [FeignFormConfig::class])
 interface GoogleOauthFeign {
     @PostMapping(value = ["/token"], consumes = [MediaType.APPLICATION_FORM_URLENCODED_VALUE])
-    fun exchangeTokenForm(@RequestBody form: MultiValueMap<String, String>): GoogleTokenResponse
+    fun exchangeTokenForm(
+        @RequestBody form: MultiValueMap<String, String>,
+    ): GoogleTokenResponse
 }

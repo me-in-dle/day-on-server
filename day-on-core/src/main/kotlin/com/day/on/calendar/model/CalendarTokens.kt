@@ -9,5 +9,5 @@ data class CalendarTokens(
     val accessToken: String,
     val refreshToken: String,
     val createdAt: LocalDateTime = LocalDateTime.now(),
-    val updatedAt: LocalDateTime = LocalDateTime.now()
+    val updatedAt: LocalDateTime = LocalDateTime.now(),
 )
