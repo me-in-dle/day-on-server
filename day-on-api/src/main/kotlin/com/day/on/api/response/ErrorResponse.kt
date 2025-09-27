@@ -2,6 +2,7 @@ package com.day.on.api.response
 
 import com.day.on.api.exception.ApiDefaultErrorCode
 import com.day.on.common.exception.CommonErrorCode
+import com.fasterxml.jackson.annotation.JsonProperty
 import java.lang.Exception
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -18,13 +19,14 @@ import java.time.format.DateTimeFormatter
 data class ErrorResponse(
     val success: Boolean = false,
     val message: String?,
-    val errorCode: CommonErrorCode,
+    @JsonProperty("errorCode")
+    val errorCode: String,
     val path: String,
     val timestamp: String = LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
 ) {
     companion object {
         /**
-         * 에러 응답 생성
+         * 도메인 에러 코드 기반 응답 생성
          */
         fun of(
             message: String?,
@@ -33,11 +35,14 @@ data class ErrorResponse(
         ): ErrorResponse {
             return ErrorResponse(
                 message = message,
-                errorCode = errorCode,
+                errorCode = errorCode.errorCode,
                 path = path
             )
         }
 
+        /**
+         * 스프링 예외 기반 응답 생성
+         */
         fun of(
             message: String?,
             ex: Exception,
@@ -45,10 +50,7 @@ data class ErrorResponse(
         ): ErrorResponse {
             return ErrorResponse(
                 message = message,
-                errorCode = ApiDefaultErrorCode(
-                    errorCode = ex.javaClass.simpleName,
-                    message = ex.message?.substring(50) ?: "서버 에러"
-                ),
+                errorCode = ex.javaClass.simpleName,
                 path = path
             )
         }
