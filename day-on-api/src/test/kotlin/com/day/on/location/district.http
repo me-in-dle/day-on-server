@@ -1,0 +1,17 @@
+# @name 행정구역 데이터 저장
+POST {{baseUrl}}/api/v1/districts/save-preprocessed?jsonFilePath=data/korean_administrative_districts_preprocessed.json
+Content-Type: application/json
+Accept: application/json
+
+###
+
+# @name 행정구역 데이터 전체 삭제
+DELETE {{baseUrl}}/api/v1/districts/all
+Content-Type: application/json
+
+{
+    "confirm": "DELETE_ALL"
+}
+
+###
+
