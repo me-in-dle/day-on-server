@@ -10,6 +10,7 @@ dependencies {
     implementation(project(":day-on-provider:day-on-provider-claude"))
 
     implementation("org.springframework.boot:spring-boot-starter-web")
+    implementation("org.springframework.boot:spring-boot-starter-validation")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin:$kotlinModuleVersion")
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-websocket")
