@@ -2,7 +2,8 @@ package com.day.on.location.endpoint
 
 import com.day.on.api.response.SuccessResponse
 import com.day.on.location.dto.DistrictDeleteRequest
-import com.day.on.location.usecase.dto.DistrictOperationResult
+import com.day.on.location.usecase.dto.DistrictOperationResponse
+import com.day.on.location.usecase.dto.DistrictSearchResponse
 import com.day.on.location.usecase.inbound.DistrictUseCase
 import jakarta.validation.Valid
 import org.springframework.http.HttpStatus
@@ -25,7 +26,7 @@ class DistrictController(
      */
     @PostMapping("/save-preprocessed")
     @ResponseStatus(HttpStatus.CREATED)
-    fun savePreprocessedDistricts(@RequestParam jsonFilePath: String): SuccessResponse<DistrictOperationResult> {
+    fun savePreprocessedDistricts(@RequestParam jsonFilePath: String): SuccessResponse<DistrictOperationResponse> {
         val response = districtDataUseCase.savePreprocessedDistricts(jsonFilePath)
         return SuccessResponse.of(response)
     }
@@ -38,6 +39,18 @@ class DistrictController(
     @ResponseStatus(HttpStatus.NO_CONTENT)
     fun deleteAllDistricts(@RequestBody @Valid request: DistrictDeleteRequest) {
         districtDataUseCase.deleteAllDistricts(request.confirm)
+    }
+
+    /**
+     * GPS 좌표로 행정구역 검색
+     */
+    @GetMapping("/search")
+    fun searchDistrict(
+        @RequestParam latitude: Double,
+        @RequestParam longitude: Double
+    ): SuccessResponse<DistrictSearchResponse> {
+        val response = districtDataUseCase.findDistrictByCoordinates(latitude, longitude)
+        return SuccessResponse.of(response)
     }
 
 }

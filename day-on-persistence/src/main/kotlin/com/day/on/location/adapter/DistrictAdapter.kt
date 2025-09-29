@@ -3,6 +3,7 @@ package com.day.on.location.adapter
 import com.day.on.location.exception.LocationErrorCode
 import com.day.on.location.exception.LocationException
 import com.day.on.location.usecase.dto.DistrictCreateRequest
+import com.day.on.location.usecase.dto.CachedDistrict
 import com.day.on.location.jpa.repository.DistrictRepository
 import com.day.on.location.usecase.outbound.DistrictPort
 import com.fasterxml.jackson.databind.JsonNode
@@ -24,7 +25,7 @@ class DistrictAdapter(
     private val logger = LoggerFactory.getLogger(DistrictAdapter::class.java)
     
     override fun savePreprocessedDistricts(jsonFilePath: String): Int {
-        logger.info("=== 행정구역 데이터 저장 시작 ===")
+        logger.info("행정구역 데이터 저장 시작")
         
         // 기존 데이터 확인
         val existingCount = districtRepository.count()
@@ -88,7 +89,7 @@ class DistrictAdapter(
         
         // 일괄 저장
         val savedEntities = districtRepository.saveAll(result)
-        logger.info("=== 행정구역 데이터 저장 완료: {}개 구역 저장 ===", savedEntities.size)
+        logger.info("행정구역 데이터 저장 완료: {}개 구역 저장", savedEntities.size)
         
         return savedEntities.size
     }
@@ -97,6 +98,25 @@ class DistrictAdapter(
         logger.warn("모든 행정구역 데이터 삭제")
         districtRepository.truncateTable()
         logger.warn("삭제 완료")
+    }
+
+    override fun findAll(): List<CachedDistrict> {
+        logger.info("전체 행정구역 조회 시작")
+
+        val entities = districtRepository.findAll()
+        logger.info("DB에서 조회한 행정구역 개수: {}개", entities.size)
+
+        return entities.map { entity ->
+            CachedDistrict(
+                sigCd = entity.sigCd,
+                sigKorNm = entity.sigKorNm,
+                sidoNm = entity.sidoNm,
+                districtFullNm = entity.districtFullNm,
+                centerLatitude = entity.centerLatitude.toDouble(),
+                centerLongitude = entity.centerLongitude.toDouble(),
+                coordinates = entity.coordinates
+            )
+        }
     }
     
     /**
@@ -114,4 +134,5 @@ class DistrictAdapter(
             districtFullNm = jsonNode.get("districtFullNm").asText()
         )
     }
+
 }
