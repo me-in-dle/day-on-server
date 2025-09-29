@@ -6,6 +6,7 @@ import com.day.on.location.usecase.dto.DistrictSearchResponse
 import com.day.on.location.usecase.inbound.DistrictUseCase
 import com.day.on.location.usecase.outbound.DistrictPort
 import com.day.on.location.util.GeometryUtil
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import org.springframework.transaction.annotation.Transactional
 
@@ -16,8 +17,11 @@ import org.springframework.transaction.annotation.Transactional
 @Transactional(readOnly = true)
 class DistrictService(
     private val districtDataPort: DistrictPort,
-    private val locationCacheService: LocationCacheService
+    private val locationCacheService: LocationCacheService,
+    private val geometryUtil: GeometryUtil
 ) : DistrictUseCase {
+
+    private val logger = LoggerFactory.getLogger(DistrictService::class.java)
 
     @Transactional
     override fun savePreprocessedDistricts(jsonFilePath: String): DistrictOperationResponse {
@@ -37,28 +41,37 @@ class DistrictService(
         // 1. 캐시에서 전체 행정구역 조회
         val allDistricts = locationCacheService.getAllDistricts()
 
+        logger.info("==========================")
+        logger.info("요청 GPS 좌표: 위도={}, 경도={}", latitude, longitude)
+
         // 2. 하버사인으로 가까운 3개 추출
         val nearestDistricts = findNearestDistricts(latitude, longitude, allDistricts)
 
-        // 테스트용 로그
-        println("=== 가까운 3개 행정구역 ===")
+        logger.debug("가까운 3개 행정구역 후보:")
         nearestDistricts.forEachIndexed { index, district ->
-            val distance = GeometryUtil().haversineDistance(
+            val distance = geometryUtil.haversineDistance(
                 latitude, longitude,
                 district.centerLatitude, district.centerLongitude
             )
-            println("${index + 1}. ${district.districtFullNm} (거리: ${String.format("%.2f", distance)}km)")
+            logger.debug("{}. {} (거리: {} km)", index + 1, district.districtFullNm, String.format("%.2f", distance))
         }
-        println("==========================")
 
-        // TODO 3. Ray Casting으로 정확한 구역 판별
-//        val exactDistrict = findExactDistrict(latitude, longitude, nearestDistricts)
+        // 3. Ray Casting으로 정확한 구역 판별
+        val exactDistrict = findExactDistrict(latitude, longitude, nearestDistricts)
+
+        if (exactDistrict != null) {
+            logger.info("최종 판정된 행정구역: {}", exactDistrict.districtFullNm)
+        } else {
+            logger.warn("최종 판정된 행정구역: {} (근사치)", nearestDistricts.first().districtFullNm)
+        }
+        logger.info("==========================")
+
 
         // TODO 4. DistrictSearchResponse 변환
 //        return toDistrictSearchResponse(exactDistrict, latitude, longitude)
 
         // 임시 반환 (테스트용)
-        val firstDistrict = nearestDistricts.first()
+        val firstDistrict = exactDistrict ?: nearestDistricts.first()
         return DistrictSearchResponse(
             sigCd = firstDistrict.sigCd,
             sidoNm = firstDistrict.sidoNm,
@@ -67,7 +80,7 @@ class DistrictService(
             centerLatitude = firstDistrict.centerLatitude,
             centerLongitude = firstDistrict.centerLongitude,
             distance = 0.0,
-            isExactMatch = false
+            isExactMatch = exactDistrict != null
         )
     }
 
@@ -79,8 +92,6 @@ class DistrictService(
         userLongitude: Double,
         allDistricts: List<CachedDistrict>
     ): List<CachedDistrict> {
-        val geometryUtil = GeometryUtil()
-
         return allDistricts
             .map { district ->
                 val distance = geometryUtil.haversineDistance(
@@ -92,6 +103,31 @@ class DistrictService(
             .sortedBy { it.second }
             .take(3)
             .map { it.first }
+    }
+
+    /**
+     * Ray Casting으로 정확한 행정구역 판별
+     * 3개 후보 중 사용자가 실제로 위치한 구역 찾기
+     */
+    private fun findExactDistrict(
+        userLatitude: Double,
+        userLongitude: Double,
+        nearestDistricts: List<CachedDistrict>
+    ): CachedDistrict? {
+        for (district in nearestDistricts) { // 3개 후보 순회
+            val isInside = geometryUtil.isPointInPolygon(
+                userLatitude,
+                userLongitude,
+                district.coordinates
+            )
+
+            if (isInside) {
+                return district  // 첫 번째로 찾은 구역 반환
+            }
+        }
+
+        // 3개 모두 해당 안 되면 null (경계선 밖)
+        return null
     }
 
 }
