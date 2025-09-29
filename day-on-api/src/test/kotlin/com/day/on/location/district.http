@@ -15,20 +15,16 @@ Content-Type: application/json
 
 ###
 
-# @name GPS 좌표로 행정구역 검색 (첫 번째 호출 - Cache Miss)
-GET {{baseUrl}}/api/v1/districts/search?latitude=37.5665&longitude=126.9780
-Content-Type: application/json
-
-###
-
-# @name GPS 좌표로 행정구역 검색 (두 번째 호출 - Cache Hit)
-GET {{baseUrl}}/api/v1/districts/search?latitude=37.5665&longitude=126.9780
-Content-Type: application/json
-
-###
-
-# @name 다른 좌표로 검색
+# @name 강남역 좌표
 GET {{baseUrl}}/api/v1/districts/search?latitude=37.4979&longitude=127.0276
 Content-Type: application/json
 
 ###
+
+# @name 서울시청 좌표
+GET {{baseUrl}}/api/v1/districts/search?latitude=37.5665&longitude=126.9780
+
+###
+
+# @name 부산역 좌표
+GET {{baseUrl}}/api/v1/districts/search?latitude=35.1156&longitude=129.0417
