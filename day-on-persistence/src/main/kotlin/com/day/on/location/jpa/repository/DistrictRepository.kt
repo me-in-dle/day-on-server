@@ -10,6 +10,9 @@ import org.springframework.data.jpa.repository.Query
  */
 interface DistrictRepository : JpaRepository<DistrictEntity, Long> {
 
+    /**
+     * 행정구역 데이터 삭제
+     */
     @Modifying
     @Query(value = "TRUNCATE TABLE administrative_districts", nativeQuery = true)
     fun truncateTable()
