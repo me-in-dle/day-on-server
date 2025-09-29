@@ -1,5 +1,7 @@
 package com.day.on.location.service
 
+import com.day.on.location.exception.LocationErrorCode
+import com.day.on.location.exception.LocationException
 import com.day.on.location.usecase.dto.CachedDistrict
 import com.day.on.location.usecase.dto.DistrictOperationResponse
 import com.day.on.location.usecase.dto.DistrictSearchResponse
@@ -67,20 +69,11 @@ class DistrictService(
         logger.info("==========================")
 
 
-        // TODO 4. DistrictSearchResponse 변환
-//        return toDistrictSearchResponse(exactDistrict, latitude, longitude)
-
-        // 임시 반환 (테스트용)
-        val firstDistrict = exactDistrict ?: nearestDistricts.first()
-        return DistrictSearchResponse(
-            sigCd = firstDistrict.sigCd,
-            sidoNm = firstDistrict.sidoNm,
-            sigKorNm = firstDistrict.sigKorNm,
-            districtFullNm = firstDistrict.districtFullNm,
-            centerLatitude = firstDistrict.centerLatitude,
-            centerLongitude = firstDistrict.centerLongitude,
-            distance = 0.0,
-            isExactMatch = exactDistrict != null
+        // 4. DistrictSearchResponse 변환
+        return toDistrictSearchResponse(
+            exactDistrict ?: nearestDistricts.first(),
+            latitude,
+            longitude
         )
     }
 
@@ -128,6 +121,33 @@ class DistrictService(
 
         // 3개 모두 해당 안 되면 null (경계선 밖)
         return null
+    }
+
+    /**
+     * CachedDistrict를 DistrictSearchResponse로 변환
+     */
+    private fun toDistrictSearchResponse(
+        district: CachedDistrict?,
+        userLatitude: Double,
+        userLongitude: Double
+    ): DistrictSearchResponse {
+        val exactDistrict = district ?: throw LocationException(LocationErrorCode.DISTRICT_NOT_FOUND)
+
+        val distance = geometryUtil.haversineDistance(
+            userLatitude, userLongitude,
+            exactDistrict.centerLatitude, exactDistrict.centerLongitude
+        )
+
+        return DistrictSearchResponse(
+            sigCd = exactDistrict.sigCd,
+            sidoNm = exactDistrict.sidoNm,
+            sigKorNm = exactDistrict.sigKorNm,
+            districtFullNm = exactDistrict.districtFullNm,
+            centerLatitude = exactDistrict.centerLatitude,
+            centerLongitude = exactDistrict.centerLongitude,
+            distance = distance,
+            isExactMatch = true
+        )
     }
 
 }
