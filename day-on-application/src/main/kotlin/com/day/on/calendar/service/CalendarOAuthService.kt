@@ -36,7 +36,7 @@ class CalendarOAuthService(
     private lateinit var defaultClientRedirect: String
 
     // TODO : 경로 추후 수정 gate way + yml
-    @Value("\${calendar.webhook.url:https://1e478f464491.ngrok-free.app/api/v1/calendar/webhook}")
+    @Value("\${calendar.webhook.url:https://320f37ba29ab.ngrok-free.app/api/v1/calendar/webhook}")
     private lateinit var webhookUrl: String
 
     /**
@@ -113,7 +113,6 @@ class CalendarOAuthService(
         logger.info("Starting week sync for accountId=$accountId ($today ~ $weekEnd)")
 
         val (weekEvents, syncToken) = try {
-            // TODO : syncToken null 문제 해결 하기
             providerClient.fetchEventsForDateRange(ct, token.accessToken, today, weekEnd)
         } catch (ex: Exception) {
             logger.error("Week sync failed for accountId=$accountId", ex)

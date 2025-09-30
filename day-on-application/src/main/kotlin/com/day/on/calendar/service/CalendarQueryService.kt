@@ -37,7 +37,8 @@ class CalendarQueryService(
     private val cachePort: CalendarCachePort,
     private val eventQueryPort: CalendarEventQueryPort,
     private val tokenPort: CalendarTokenPort,
-    private val asyncSyncPort: AsyncCalendarSyncPort,
+    private val calendarProviderClientPort: CalendarProviderClientPort,
+    private val prefetchSyncPort: PrefetchCalendarSyncPort,
 ) : CalendarQueryUseCase {
     private val logger = LoggerFactory.getLogger(javaClass)
 
@@ -45,7 +46,7 @@ class CalendarQueryService(
      * 1. 최초연동: 선택한 날을 기준으로 (외부api호출해서 일주일치 동기화) ex 1-7일치가져옴
      * 2. 사용자가 4일 선택: DB에 있음 → 즉시 응답
      * 3. 백그라운드 체크: 4+7=8일까지 DB 확인 → 8일 데이터 없음
-     * 4. 비동기로 8-14일 동기화
+     * 4. 8-14일 동기화
      */
     override fun getByDate(
         accountId: Long,
@@ -76,12 +77,21 @@ class CalendarQueryService(
 
         // 외부 연동되어 있고, daily schedules에 범위 체크 후 백그라운드 실시간 동기화
         if (connection?.isActive == true) {
-            val token = tokenPort.findByAccountIdAndConnectType(accountId, connection.provider)
-
+            var token = tokenPort.findByAccountIdAndConnectType(accountId, connection.provider)
+            // 토큰이 만료되면 리프레시 토큰을 재시도
+            if (token != null && token.isExpired()) {
+                try {
+                    token = calendarProviderClientPort.getRefreshToken(accountId, connection.provider, token.refreshToken)
+                    logger.info("Refreshed token for accountId=$accountId")
+                } catch (e: Exception) {
+                    logger.error("Failed to refresh token", e)
+                    return CalendarQueryResult.NotConnected(schedules)
+                }
+            }
             if (token != null) {
                 try {
                     // 현재 날짜 기준 앞뒤로 +- 4일 체크 및 Prefetch
-                    asyncSyncPort.prefetchIfNeeded(
+                    prefetchSyncPort.prefetchIfNeeded(
                         accountId,
                         connection.provider,
                         token.accessToken,

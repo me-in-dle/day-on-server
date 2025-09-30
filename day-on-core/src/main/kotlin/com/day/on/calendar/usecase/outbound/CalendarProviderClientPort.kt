@@ -16,6 +16,12 @@ interface CalendarProviderClientPort {
         redirectUri: String,
     ): CalendarTokens
 
+    fun getRefreshToken(
+        accountId: Long,
+        connectType: ConnectType,
+        refreshToken: String
+    ): CalendarTokens
+
     // 날짜 범위로 이벤트 조회
     fun fetchEventsForDateRange(
         connectType: ConnectType,

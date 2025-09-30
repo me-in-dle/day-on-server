@@ -31,6 +31,7 @@ class CalendarEventSyncAdapter(
     /**
      * 날짜 범위 명시 - 빈 날짜도 DailySchedule 생성
      */
+    @Transactional
     override fun saveEventsForDateRange(
             accountId: Long,
             startDate: LocalDate,

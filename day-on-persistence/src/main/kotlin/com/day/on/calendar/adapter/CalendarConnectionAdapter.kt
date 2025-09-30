@@ -29,6 +29,7 @@ class CalendarConnectionAdapter(private val jpaRepository: CalendarConnectionJpa
     }
 
 
+    @Transactional
     override fun updateSyncTokenByAccountId(
         accountId: Long,
         connectType: String,
@@ -48,7 +49,7 @@ class CalendarConnectionAdapter(private val jpaRepository: CalendarConnectionJpa
         }
     }
 
-
+    @Transactional(readOnly = false)
     override fun updateSyncToken(
         connectionId: Long,
         syncToken: String,
@@ -60,6 +61,7 @@ class CalendarConnectionAdapter(private val jpaRepository: CalendarConnectionJpa
         )
     }
 
+    @Transactional(readOnly = false)
     override fun updateLastSynced(
         connectionId: Long,
         timestamp: LocalDateTime,

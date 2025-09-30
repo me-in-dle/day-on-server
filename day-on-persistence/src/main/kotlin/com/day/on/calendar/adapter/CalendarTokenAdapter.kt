@@ -37,6 +37,7 @@ class CalendarTokenAdapter(
                         connectType = existing.connectType,
                         accessToken = encryptedAccessToken,
                         refreshToken = encryptedRefreshToken,
+                        expiresAt = existing.expiresAt,
                         createdAt = existing.createdAt,
                         updatedAt = now,
                     )
@@ -50,6 +51,7 @@ class CalendarTokenAdapter(
                         connectType = token.connectType,
                         accessToken = encryptedAccessToken,
                         refreshToken = encryptedRefreshToken,
+                        expiresAt = token.expiresAt,
                         createdAt = now,
                         updatedAt = now,
                     )
@@ -82,6 +84,7 @@ class CalendarTokenAdapter(
                 connectType = entity.connectType,
                 accessToken = decryptedAccessToken,
                 refreshToken = decryptedRefreshToken,
+                expiresAt = entity.expiresAt,
                 createdAt = entity.createdAt,
                 updatedAt = entity.updatedAt,
             )

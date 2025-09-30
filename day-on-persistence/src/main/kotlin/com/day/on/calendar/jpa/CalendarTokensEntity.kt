@@ -27,6 +27,8 @@ class CalendarTokensEntity(
     val accessToken: String,
     @Column(name = "refresh_token", length = 2000, nullable = false)
     val refreshToken: String,
+    @Column(name = "expires_at" , nullable = false)
+    val expiresAt: LocalDateTime,
     @Column(name = "created_at", nullable = false)
     val createdAt: LocalDateTime = LocalDateTime.now(),
     @Column(name = "updated_at", nullable = false)
@@ -38,6 +40,7 @@ class CalendarTokensEntity(
             connectType = this.connectType,
             accessToken = this.accessToken,
             refreshToken = this.refreshToken,
+            expiresAt = this.expiresAt,
             createdAt = this.createdAt,
             updatedAt = this.updatedAt,
         )
@@ -50,6 +53,7 @@ class CalendarTokensEntity(
                 connectType = domain.connectType,
                 accessToken = domain.accessToken,
                 refreshToken = domain.refreshToken,
+                expiresAt = domain.expiresAt,
                 createdAt = domain.createdAt,
                 updatedAt = domain.updatedAt,
             )
