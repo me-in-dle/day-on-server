@@ -95,39 +95,48 @@ class CalendarEventSyncAdapter(
             logger.info("Upserted ${toSave.size} events for $startDate~$endDate")
         }
 
-        updateCacheSafelyAfterCommit(accountId, dates, dailyMap, toSave)
+        val today = LocalDate.now()
+        if (today in dates) {
+            updateCacheSafelyAfterCommit(accountId, today, toSave, emptyList())
+        }
     }
 
 
     private fun updateCacheSafelyAfterCommit(
         accountId: Long,
-        dates: List<LocalDate>,
-        dailyMap: Map<LocalDate, DailyScheduleEntity>,
-        entities: List<ScheduleContentEntity>,
+        today: LocalDate,
+        toSave: List<ScheduleContentEntity>,
+        toDelete: List<String>
     ) {
-        val today = LocalDate.now()
-        if (today !in dates) return
-
         TransactionSynchronizationManager.registerSynchronization(
             object : TransactionSynchronization {
                 override fun afterCommit() {
                     try {
-                        val todaySchedules =
-                            entities
-                                .filter { dailyMap[today]?.id == it.dailySchedulesId }
-                                .map { it.toDomain() }
+                        // 현재 캐시 읽기 (없으면 빈 리스트)
+                        val current = cachePort.get(accountId, today)?.toMutableList() ?: mutableListOf()
 
-                        if (todaySchedules.isNotEmpty()) {
-                            cachePort.put(accountId, today, todaySchedules, ttlSeconds = 3600)
-                            logger.debug("Cache updated after commit for accountId=$accountId, date=$today")
+                        // 삭제 반영
+                        if (toDelete.isNotEmpty()) {
+                            current.removeIf { it.externalEventId in toDelete }
                         }
+
+                        // 저장/업데이트 반영
+                        if (toSave.isNotEmpty()) {
+                            val saveIds = toSave.mapNotNull { it.externalEventId }
+                            current.removeIf { it.externalEventId in saveIds }
+                            current.addAll(toSave.filter { it.createdAt.toLocalDate() == today }.map { it.toDomain() })
+                        }
+
+                        cachePort.put(accountId, today, current, ttlSeconds = 3600)
+                        logger.debug("Cache updated after commit for accountId=$accountId, date=$today")
                     } catch (ex: Exception) {
-                        logger.warn("Cache update failed (ignored) for accountId=$accountId, date=$today", ex)
+                        logger.warn("Cache update failed for accountId=$accountId, date=$today", ex)
                     }
                 }
-            },
+            }
         )
     }
+
 
     @Transactional
     override fun saveInternalEvent(
@@ -221,6 +230,8 @@ class CalendarEventSyncAdapter(
 
         val toSave = mutableListOf<ScheduleContentEntity>()
         val toDelete = mutableListOf<String>()
+        val today = LocalDate.now()
+        val todayChanged = mutableListOf<ScheduleContent>() // 오늘 변경만 추출 후 캐시 업뎃
 
         changes.forEach { change ->
             val daily = dailyRepo.findByAccountIdAndDay(accountId, change.eventDate)
@@ -233,11 +244,11 @@ class CalendarEventSyncAdapter(
                 toDelete += change.externalEventId
             } else {
                 val existing = existingEntities[change.externalEventId]
-                if (existing != null) {
+                val newEntity = if (existing != null) {
                     change.schedule?.let { existing.updateFrom(it) }
-                    toSave += existing
+                    existing
                 } else {
-                    toSave += ScheduleContentEntity(
+                    ScheduleContentEntity(
                             id = 0L,
                             dailySchedulesId = daily.id,
                             accountId = accountId,
@@ -255,6 +266,7 @@ class CalendarEventSyncAdapter(
                             updatedAt = LocalDateTime.now(),
                     )
                 }
+                toSave += newEntity
             }
         }
 
@@ -265,6 +277,12 @@ class CalendarEventSyncAdapter(
         if (toSave.isNotEmpty()) {
             contentRepo.saveAll(toSave)
         }
+
+        // 3. 오늘 날짜 캐시 갱신
+        if (changes.any { it.eventDate == today }) {
+            updateCacheSafelyAfterCommit(accountId, today, toSave, toDelete)
+        }
+
     }
 
 
