@@ -4,24 +4,22 @@ import com.day.on.account.type.ConnectType
 import com.day.on.calendar.usecase.outbound.*
 import com.day.on.common.outbound.LockManager
 import org.slf4j.LoggerFactory
-import org.springframework.scheduling.annotation.Async
 import org.springframework.stereotype.Component
 import java.time.LocalDate
 
 @Component
-class AsyncCalendarSyncAdapter(
+class PrefetchCalendarSyncAdapter(
     private val providerClientPort: CalendarProviderClientPort,
     private val eventSyncPort: CalendarEventSyncPort,
     private val eventQueryPort: CalendarEventQueryPort,
     private val lockManager: LockManager,
     private val connectionPort: CalendarConnectionPort,
-) : AsyncCalendarSyncPort {
+) : PrefetchCalendarSyncPort {
     private val logger = LoggerFactory.getLogger(javaClass)
 
     /**
      * Prefetch: 현재 날짜 ±4일 범위 체크 후 없으면 동기화
      */
-    @Async("asyncTaskExecutor")
     override fun prefetchIfNeeded(
         accountId: Long,
         connectType: ConnectType,
@@ -58,6 +56,7 @@ class AsyncCalendarSyncAdapter(
                     // 2. 없는 날 DailySchedule만 생성
                     eventSyncPort.createDailySchedulesForRange(accountId, missingStart, missingEnd)
 
+                    // TODO : retry + Circuit Breaker
                     val (events, nextSyncToken) =
                         providerClientPort.fetchEventsForDateRange(
                             connectType,

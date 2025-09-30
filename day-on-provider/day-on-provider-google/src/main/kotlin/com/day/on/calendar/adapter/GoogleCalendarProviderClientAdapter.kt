@@ -14,6 +14,7 @@ import com.day.on.calendar.usecase.dto.GoogleWatchResponse
 import com.day.on.calendar.usecase.dto.ProviderEventChange
 import com.day.on.calendar.usecase.dto.ProviderEventsResponse
 import com.day.on.calendar.usecase.outbound.CalendarProviderClientPort
+import com.day.on.calendar.usecase.outbound.CalendarTokenPort
 import org.springframework.stereotype.Component
 import org.springframework.util.LinkedMultiValueMap
 import java.net.URLEncoder
@@ -30,6 +31,7 @@ import java.util.*
 class GoogleCalendarProviderClientAdapter(
     private val oauthClient: GoogleOauthFeign,
     private val calendarClient: GoogleCalendarFeign,
+    private val tokenPort: CalendarTokenPort,
     private val googleProps: GoogleCalendarOauthProperties,
 ) : CalendarProviderClientPort {
     // TODO : 시간정책 UTC 저장 or 클라이언트 변환 규칙을 정하기
@@ -54,6 +56,8 @@ class GoogleCalendarProviderClientAdapter(
             throw IllegalStateException("Google token(for calendar) exchange failed: no access token")
         }
 
+        val expiresAt = LocalDateTime.now().plusSeconds(resp.expiresIn!!.toLong())
+
         return CalendarTokens(
             accountId = 0L, // 실제 저장 시 service에서 accountId 채움: tokenPort.save(token.copy(accountId = accountId))
             connectType = ConnectType.GOOGLE,
@@ -61,9 +65,36 @@ class GoogleCalendarProviderClientAdapter(
             refreshToken =
                 resp.refreshToken
                     ?: "",
+            expiresAt = expiresAt,
             createdAt = LocalDateTime.now(),
             updatedAt = LocalDateTime.now(),
         )
+    }
+
+    override fun getRefreshToken(accountId: Long, connectType: ConnectType, refreshToken: String): CalendarTokens  {
+        val form = LinkedMultiValueMap<String, String>().apply {
+            add("client_id", googleProps.clientId)
+            add("client_secret", googleProps.clientSecret)
+            add("refresh_token", refreshToken)
+            add("grant_type", "refresh_token")
+        }
+
+        val resp = oauthClient.exchangeTokenForm(form)
+
+        requireNotNull(resp.accessToken) { "Google refreshToken response did not contain access_token" }
+        requireNotNull(resp.expiresIn) { "Google refreshToken response did not contain expires_in" }
+
+        val refreshed = CalendarTokens(
+            accountId = accountId,
+            connectType = connectType,
+            accessToken = resp.accessToken,
+            refreshToken = refreshToken,
+            expiresAt = LocalDateTime.now().plusSeconds(resp.expiresIn.toLong()),
+            updatedAt = LocalDateTime.now()
+        )
+
+        tokenPort.save(refreshed)
+        return refreshed
     }
 
     override fun fetchEventsForDateRange(

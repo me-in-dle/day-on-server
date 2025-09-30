@@ -8,6 +8,11 @@ data class CalendarTokens(
     val connectType: ConnectType,
     val accessToken: String,
     val refreshToken: String,
+    val expiresAt: LocalDateTime,
     val createdAt: LocalDateTime = LocalDateTime.now(),
     val updatedAt: LocalDateTime = LocalDateTime.now(),
-)
+) {
+    fun isExpired() : Boolean {
+        return LocalDateTime.now().isAfter(expiresAt.minusMinutes(1))
+    }
+}
