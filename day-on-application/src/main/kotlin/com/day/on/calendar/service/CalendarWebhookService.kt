@@ -18,8 +18,8 @@ class CalendarWebhookService(
     private val tokenPort: CalendarTokenPort,
 ) : CalendarWebhookUseCase {
     private val logger = LoggerFactory.getLogger(javaClass)
-    // TODO : channel Id 갱신하는 거
-    @Transactional
+
+    // TODO : 채널 만료시 재등록 로직 추가 (스케줄러)
     override fun handleWebhookNotification(
         channelId: String,
         resourceId: String,
